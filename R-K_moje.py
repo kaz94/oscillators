@@ -1,3 +1,4 @@
+#*** created...
 # d2x/dt2 + alfa(x^2-mi)dx/dt + x(x+d)(x+e)/de=0
 # dx/dt = d1
 # d2x/dt2 = -alfa(x^2 - mi)d1 - x(x+d)(x+e) / de = 0
