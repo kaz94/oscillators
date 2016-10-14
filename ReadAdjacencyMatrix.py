@@ -2,12 +2,13 @@ import csv
 import numpy as np
 
 filename = '/home/kasia/Pulpit/macierz.csv'
-
+file = '/home/kasia/Pulpit/inzynierka/macierz.txt'
 
 
 #csv.register_dialect('csv', quoting=csv.QUOTE_NONE)
 class ReadAdjacencyMatrix:
     matrix = []
+
     def __init__(self):
         with open(filename, 'r') as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
@@ -18,6 +19,18 @@ class ReadAdjacencyMatrix:
                     print(row)
 
 
+def read_file(filename = file):
+    matrix = []
+    with open(filename, 'r') as f:
+        read_data = f.readlines()
+        read_data = [line.split(',') for line in read_data]
+        read_data = read_data[1:]
+        for l, line in enumerate(read_data):
+            for i, j in enumerate(line):
+                read_data[l][i] = float(j.strip())
+
+        # print(read_data)
+    return read_data
 
 
 

@@ -1,53 +1,53 @@
 from matplotlib import pyplot as plt
+from ReadAdjacencyMatrix import read_file
+from scipy.integrate import odeint
+from oscillator import Oscillator
 
-def vectorfield(w, t, p):
+
+def load_params():
+    w = []
+    params = []
+    adj_list = read_file()
+    for i, osc in enumerate(adj_list):
+        # Oscillator(x, y, alfa, mi, d, e)
+        w.append(osc[0]) #x0
+        w.append(osc[1]) #y0
+        params.append(osc[2:]) # alfa, mi, d, e, coupling1, k1, coupl2, k2, ...
+
+    return w, params
+
+
+def vector_field(w, t, p):
     """
-    Defines diff. equasions
-        w :  vector of the state variables:
-                  w = [x1,y1,x2,y2,...]
-        t :  time
-        p :  vector of the parameters:
-                p = [alfa1, mi1, d1, e1, k1, alfa2, mi2, d2, e2, k2, ...]
-                alfa:
-                mi:
-                y: initial derrivative at x
-                d: -saddle
-                e: -node
-                Right hand side of the differential equations
-                  dx/dt = y
-                  dy/dt2 = -alfa(x^2 - mi)d1 - x(x+d)(x+e) / de = 0
+        w :  vector of the state variables: w = [x1,y1,x2,y2,...]
+        p = [alfa1, mi1, d1, e1, k1, alfa2, mi2, d2, e2, k2, ...]
+        y: initial derrivative at x
+        d: -saddle
+        e: -node
+          dx/dt = y
+          dy/dt2 = -alfa(x^2 - mi)d1 - x(x+d)(x+e) / de = 0
     """
-    x1, y1, x2, y2 = w
-    alfa1, mi1, d1, e1, alfa2, mi2, d2, e2, k = p
 
     # Create f = (x1',y1',x2',y2'):
-    f = [y1,
-         -alfa1 * (x1 ** 2 - mi1) * y1 - x1 * (x1 + d1) * (x1 + e1) / (d1 * e1),
-         y2,
-         -alfa2 * (x2 ** 2 - mi2) * y2 - x2 * (x2 + d2) * (x2 + e2) / (d2* e2) + k * x1]
+    f = []
+    y = w[1::2]
+    x = w[0::2]
+    for o in range(0, int(len(w)/2)):
+        f.append(y[o])
+        params = {'alfa' : p[o][0], 'mi' : p[o][1], 'd' : p[o][2], 'e' : p[o][3]}
+        couplings = p[o][4:]
+        couplings = list(zip(couplings[0::2], couplings[1::2]))
+        eq = -1 * params['alfa'] * (x[o] ** 2 - params['mi']) * \
+             y[o] - x[o] * (x[o] + params['d']) * (x[o] + params['e']) / (params['d'] * params['e'])
+        for c in couplings:
+            eq += c[1] * x[int(c[0])]
+        f.append(eq)
+
     return f
 
 
-from scipy.integrate import odeint
-
-
-# Initial conditions
-# x1 and x2 are the initial displacements; y1 and y2 are the initial velocities
-x1 = 0.1
-y1 = 0.1
-x2 = 0.1
-y2 = 0.1
-
-alfa1 = 0.1
-mi1 = 1.
-d1 = 1.
-e1 = 1.
-alfa2 = 0.1
-mi2 = 1.
-d2 = 1.
-e2 = 1.
-k = 0.1
-
+w0, p = load_params()
+n = int(len(w0)/2)
 # ODE solver parameters
 abserr = 1.0e-8
 relerr = 1.0e-6
@@ -56,29 +56,34 @@ numpoints = 2500
 
 t = [stoptime * float(i) / (numpoints - 1) for i in range(numpoints)]
 
-# Pack up the parameters and initial conditions:
-p = [alfa1, mi1, d1, e1, alfa2, mi2, d2, e2, k]
-w0 = [x1, y1, x2, y2]
 
 # Call the ODE solver.
-wsol = odeint(vectorfield, w0, t, args=(p,),
+wsol = odeint(vector_field, w0, t, args=(p,),
               atol=abserr, rtol=relerr)
 
+plot_params = {'figure.figsize': (12, 10),
+         'axes.labelsize': 'x-small',
+         'axes.titlesize':'x-small',
+         'xtick.labelsize':'x-small',
+         'ytick.labelsize':'x-small'}
+plt.rcParams.update(plot_params)
 
-plt.subplot(2, 1, 1)
-plt.plot(t, wsol[:,0], label='x1')
-plt.plot(t, wsol[:,1], label='y1')
-plt.plot(t, wsol[:,2], label='x2')
-plt.plot(t, wsol[:,3], label='y2')
-plt.xlabel('t')
-plt.grid(True)
-plt.legend()
-plt.subplot(2, 1, 2)
-plt.xlabel("x")
-plt.ylabel("y")
-plt.plot(wsol[:,0], wsol[:,1], label='osc 1')
-plt.plot(wsol[:,2], wsol[:,3], label='osc 2')
-plt.legend()
+fig, axes = plt.subplots(nrows=n, ncols=2)
+for i in range(0, n):
+    plt.subplot(n, 2, 2*i+1)
+    title = ["alfa=", p[i][0],"mi=", p[i][0],"d=", p[i][0],"e=", p[i][0]]
+    plt.title(' '.join(str(t) for t in title))
+    plt.plot(t, wsol[:,2*i], label='x')
+    plt.plot(t, wsol[:,2*i+1], label='y')
+    plt.xlabel('t')
+    plt.grid(True)
+    plt.legend(prop={'size':50/n})
+    plt.subplot(n, 2, 2*i+2)
+    plt.title("Phase space")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.plot(wsol[:,2*i], wsol[:,2*i+1])
+
+fig.tight_layout()
+plt.savefig("/home/kasia/Pulpit/inzynierka/wykres")
 plt.show()
-
-
