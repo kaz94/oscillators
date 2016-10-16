@@ -3,7 +3,7 @@ from ReadAdjacencyMatrix import read_file
 from scipy.integrate import odeint
 from oscillator import Oscillator
 
-
+couplings_gl = []
 def load_params():
     w = []
     params = []
@@ -13,7 +13,7 @@ def load_params():
         w.append(osc[0]) #x0
         w.append(osc[1]) #y0
         params.append(osc[2:]) # alfa, mi, d, e, coupling1, k1, coupl2, k2, ...
-
+        couplings_gl.append([i, list(zip(osc[6::2], osc[7::2]))])
     return w, params
 
 
@@ -51,8 +51,8 @@ n = int(len(w0)/2)
 # ODE solver parameters
 abserr = 1.0e-8
 relerr = 1.0e-6
-stoptime = 100.0
-numpoints = 2500
+stoptime = 50.0
+numpoints = 1500
 
 t = [stoptime * float(i) / (numpoints - 1) for i in range(numpoints)]
 
@@ -71,7 +71,14 @@ plt.rcParams.update(plot_params)
 fig, axes = plt.subplots(nrows=n, ncols=2)
 for i in range(0, n):
     plt.subplot(n, 2, 2*i+1)
-    title = ["alfa=", p[i][0],"mi=", p[i][0],"d=", p[i][0],"e=", p[i][0]]
+    title = ["Osc", i,"alfa=", p[i][0],"mi=", p[i][1],"d=", p[i][2],"e=", p[i][3], "Coupled to:" ]
+    if len(p[i]) > 4:
+        coupl = list(zip(p[i][4::2], p[i][5::2]))
+        for c in coupl:
+            title.append("osc")
+            title.append(int(c[0]))
+            title.append("k:")
+            title.append(c[1])
     plt.title(' '.join(str(t) for t in title))
     plt.plot(t, wsol[:,2*i], label='x')
     plt.plot(t, wsol[:,2*i+1], label='y')
