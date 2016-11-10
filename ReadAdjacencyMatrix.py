@@ -20,7 +20,6 @@ class ReadAdjacencyMatrix:
 
 
 def read_file(filename = file):
-    matrix = []
     with open(filename, 'r') as f:
         read_data = f.readlines()
         read_data = [line.split(',') for line in read_data]
