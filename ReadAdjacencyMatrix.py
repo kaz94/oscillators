@@ -1,5 +1,4 @@
 import csv
-import numpy as np
 
 filename = '/home/kasia/Pulpit/macierz.csv'
 file = '/home/kasia/Pulpit/inzynierka/macierz.txt'
