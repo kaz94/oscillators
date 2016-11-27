@@ -34,6 +34,7 @@ for k in k_range:
         # Call the ODE solver.
         wsol = odeint(vector_field, w0, t, args=(p,),
                       atol=abserr, rtol=relerr)
+
         # cut unstable points
         t = t[100:]
         wsol = wsol[100:, :]

@@ -13,7 +13,7 @@ def load_params(couplings_gl):
         # Oscillator(x, y, alfa, mi, d, e, f)
         w.append(osc[0])  # x0
         w.append(osc[1])  # y0
-        params.append(osc[2:])  # alfa, mi, d, e, f, coupling1, k1, coupl2, k2, ...
+        params.append(osc[2:])  # alfa, mi, d, e, f, coupling1, k1, coupling2, k2, ...
         couplings_gl.append([i, list(zip(osc[7::2], osc[8::2]))])
     return w, params
 
