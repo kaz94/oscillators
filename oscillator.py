@@ -4,7 +4,7 @@ class Oscillator:
     _id = 0
 
     def __init__(self, p):
-        x, y, alfa, mi, d, e = p
+        x, y, alfa, mi, d, e, f = p
         self.x = x
         self.y = y
         self.id = Oscillator._id
@@ -12,6 +12,7 @@ class Oscillator:
         self.mi = mi
         self.d = d
         self.e = e
+        self.f = f
         self.couplings = []
         self.id = Oscillator._id
         Oscillator._id += 1

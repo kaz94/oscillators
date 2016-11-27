@@ -10,11 +10,10 @@ def load_params(couplings_gl):
     params = []
     adj_list = read_file()
     for i, osc in enumerate(adj_list):
-        # Oscillator(x, y, alfa, mi, d, e)
+        # Oscillator(x, y, alfa, mi, d, e, f)
         w.append(osc[0])  # x0
         w.append(osc[1])  # y0
-        params.append(osc[2:])  # alfa, mi, d, e, coupling1, k1, coupl2, k2, ...
-        #if len(list(zip(osc[7::2], osc[8::2]))) > 0:
+        params.append(osc[2:])  # alfa, mi, d, e, f, coupling1, k1, coupl2, k2, ...
         couplings_gl.append([i, list(zip(osc[7::2], osc[8::2]))])
     return w, params
 
@@ -44,7 +43,6 @@ def vector_field(w, t, p):
         for c in couplings:
             eq += c[1] * x[int(c[0])]
         equasions.append(eq)
-
     return equasions
 
 
@@ -112,38 +110,48 @@ def plot_synchrograms(t, phases, couplings_gl, n):
     # for i, p in enumerate(phases):
     #    phases[i] = p[50:]  # delete first few points
 
-    i_subplots = 0
+    subplots = 0
     for i, coupl in enumerate(couplings_gl):
         if len(coupl[1]) > 0:
-            i_subplots += 1
+            subplots += 1
 
-    plot_params = {'figure.figsize': (10, 3*i_subplots)}
+    plot_params = {'figure.figsize': (10, 3*subplots)}
     plt.rcParams.update(plot_params)
 
-    idx = 0
-    print(couplings_gl)
+    active_subplot = 0
     for i, coupl in enumerate(couplings_gl):
-        if len(coupl[1]) > 0:
+        osc_i_couplings = coupl[1]
+        if len(osc_i_couplings) > 0:
 
-            c = coupl[1][0][0]
-            print(coupl)
-            print(coupl[1])
+            strength = osc_i_couplings[0][1]
+            from_osc = osc_i_couplings[0][0]
 
-            idx += 1
-            plt.subplot(i_subplots, 1, idx)
+            active_subplot += 1
+            plt.subplot(subplots, 1, active_subplot)
 
-            # for c in coupl[1]:
-            peakind = argrelmax(phases[int(c)])
-            plt.scatter(t[peakind], phases[int(c)][peakind], label=' '.join(["osc",str(int(c))]))
-            # peakind = signal.find_peaks_cwt(phases[i], np.arange(1, 10))
-            plt.scatter(t[peakind], phases[i][peakind], label=' '.join(["osc",str(i)]), color="red")
+            # find peaks in the drive signal
+            peak_indexes = argrelmax(phases[int(from_osc)])
+
+            # drive oscillator (in case of 1-directional coupling)
+            drive = phases[int(from_osc)][peak_indexes]
+            plt.scatter(t[peak_indexes], drive, label=' '.join(["osc", str(int(from_osc))]))
+            plt.plot(t, phases[int(from_osc)])
+
+            # driven oscillator
+            driven = phases[i][peak_indexes]
+            plt.scatter(t[peak_indexes], driven, label=' '.join(["osc", str(i)]), color="red")
             plt.plot(t, phases[i])
-            plt.plot(t, phases[int(c)])
 
-            plt.title(' '.join(["Synchrogram, k=", str(coupl[1][0][1])]))
+            plt.title(' '.join(["Synchrogram, k=", str(strength)]))
             plt.xlabel("t")
             plt.ylabel("Phase")
             plt.legend(prop={'size': 50 / n})
+
+            # quantification:
+            q = quantification(drive, driven)
+            print(q)
+            f = frequency(drive, t)
+            #print(f)
 
 
     plt.tight_layout(h_pad=1)
@@ -167,4 +175,8 @@ def quantification(phases1, phases2):
     phases_diff = phases1-phases2
     j_phases_diff = np.array([complex(imag=p) for p in phases_diff])
     return abs(np.sum(np.exp(j_phases_diff)/len(phases_diff)))
+
+
+def frequency(series_maksima, t):
+    return len(series_maksima) / (t[len(t)-1] - t[0])
 
