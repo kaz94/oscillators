@@ -3,11 +3,13 @@ from scipy.signal import hilbert
 import numpy as np
 from scipy.signal import argrelmax
 from ReadAdjacencyMatrix import read_file
+from matplotlib import cm
 
 
-def load_params(couplings_gl):
+def load_params():
     w = []
     params = []
+    couplings_gl = []
     adj_list = read_file()
     for i, osc in enumerate(adj_list):
         # Oscillator(x, y, alfa, mi, d, e, f)
@@ -15,9 +17,10 @@ def load_params(couplings_gl):
         w.append(osc[1])  # y0
         params.append(osc[2:])  # alfa, mi, d, e, f, coupling1, k1, coupling2, k2, ...
         couplings_gl.append([i, list(zip(osc[7::2], osc[8::2]))])
-    return w, params
+    return w, params, couplings_gl
 
 
+from mpl_toolkits.mplot3d import Axes3D
 def vector_field(w, t, p):
     """
         w :  vector of the state variables: w = [x1,y1,x2,y2,...]
@@ -66,12 +69,6 @@ def timeSeries(t, wsol, n, p, phases):
         plt.grid(True)
         plt.legend(prop={'size': 30 / n})
 
-        analytic_signal = hilbert(wsol[:, 2 * i])
-        # amplitude_envelope = np.abs(analytic_signal)
-        # instantaneous_phase = np.unwrap(np.angle(analytic_signal))
-        # instantaneous_frequency = np.diff(instantaneous_phase) / (2.0 * np.pi) * fs
-        phase = np.angle(analytic_signal)
-
         plt.subplot(n, 3, 3 * i + 2)
         plt.title("Phase space")
         plt.xlabel("x")
@@ -84,11 +81,9 @@ def timeSeries(t, wsol, n, p, phases):
         plt.xlabel("t")
         plt.ylabel("Phase")
 
-        plt.plot(t, phase, label='phase')
+        plt.plot(t, phases[i], label='phase')
         # plt.plot(t, instantaneous_phase, label='inst phase')
         plt.legend(prop={'size': 30 / n})
-
-        phases.append(phase)
 
     fig.tight_layout()
     plt.savefig("/home/kasia/Pulpit/inzynierka/wykres")
@@ -103,22 +98,31 @@ def timeSeries(t, wsol, n, p, phases):
 '''
 
 
-def plot_synchrograms(t, phases, couplings_gl, n):
+def get_phases(wsol, n):
+    phases = []
+    for i in range(0, n):
+        analytic_signal = hilbert(wsol[:, 2 * i])
+        # amplitude_envelope = np.abs(analytic_signal)
+        # instantaneous_phase = np.unwrap(np.angle(analytic_signal))
+        # instantaneous_frequency = np.diff(instantaneous_phase) / (2.0 * np.pi) * fs
+        phase = np.angle(analytic_signal)
+        phases.append(phase)
+    return phases
+
+
+def plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driven, plot=True):
 
     t = np.asarray(t)
-    # t = t[50:]
-    # for i, p in enumerate(phases):
-    #    phases[i] = p[50:]  # delete first few points
+    if plot:
+        subplots = 0
+        for i, coupl in enumerate(couplings_gl):
+            if len(coupl[1]) > 0:
+                subplots += 1
 
-    subplots = 0
-    for i, coupl in enumerate(couplings_gl):
-        if len(coupl[1]) > 0:
-            subplots += 1
+        plot_params = {'figure.figsize': (10, 3*subplots)}
+        plt.rcParams.update(plot_params)
+        active_subplot = 0
 
-    plot_params = {'figure.figsize': (10, 3*subplots)}
-    plt.rcParams.update(plot_params)
-
-    active_subplot = 0
     for i, coupl in enumerate(couplings_gl):
         osc_i_couplings = coupl[1]
         if len(osc_i_couplings) > 0:
@@ -126,37 +130,48 @@ def plot_synchrograms(t, phases, couplings_gl, n):
             strength = osc_i_couplings[0][1]
             from_osc = osc_i_couplings[0][0]
 
-            active_subplot += 1
-            plt.subplot(subplots, 1, active_subplot)
-
             # find peaks in the drive signal
             peak_indexes = argrelmax(phases[int(from_osc)])
 
-            # drive oscillator (in case of 1-directional coupling)
             drive = phases[int(from_osc)][peak_indexes]
-            plt.scatter(t[peak_indexes], drive, label=' '.join(["osc", str(int(from_osc))]))
-            plt.plot(t, phases[int(from_osc)])
-
-            # driven oscillator
             driven = phases[i][peak_indexes]
-            plt.scatter(t[peak_indexes], driven, label=' '.join(["osc", str(i)]), color="red")
-            plt.plot(t, phases[i])
 
-            plt.title(' '.join(["Synchrogram, k=", str(strength)]))
-            plt.xlabel("t")
-            plt.ylabel("Phase")
-            plt.legend(prop={'size': 50 / n})
+            if plot:
+                active_subplot += 1
+                plt.subplot(subplots, 1, active_subplot)
+
+                plt.scatter(t[peak_indexes], drive, label=' '.join(["osc", str(int(from_osc))]))
+                plt.plot(t, phases[int(from_osc)])
+
+                plt.scatter(t[peak_indexes], driven, label=' '.join(["osc", str(i)]), color="red")
+                plt.plot(t, phases[i])
+
+                plt.title(' '.join(["Synchrogram, k=", str(strength)]))
+                plt.xlabel("t")
+                plt.ylabel("Phase")
+                plt.legend(prop={'size': 50 / n})
 
             # quantification:
-            q = quantification(drive, driven)
-            print(q)
-            f = frequency(drive, t)
-            #print(f)
+
+            f_drive = frequency(argrelmax(phases[int(from_osc)]), t)
+            f_driven = frequency(argrelmax(phases[int(i)]), t)
+            freq_drive.append(f_drive)
+            freq_driven.append(f_driven)
+
+            ratio = f_drive / f_driven
+
+            # 1:1
+            q11 = quantification(drive, driven)
 
 
-    plt.tight_layout(h_pad=1)
-    plt.savefig("/home/kasia/Pulpit/inzynierka/synchro")
-    plt.show()
+            quantif.append(q11)
+            #print("f ratio:",np.round(ratio,3))
+            #print(np.round(q1,2), np.round(q2,2), np.round(q3,2))
+
+    if plot:
+        plt.tight_layout(h_pad=1)
+        plt.savefig("/home/kasia/Pulpit/inzynierka/synchro")
+        plt.show()
 
 
 def save_p_s(n, wsol, p):
@@ -178,5 +193,55 @@ def quantification(phases1, phases2):
 
 
 def frequency(series_maksima, t):
-    return len(series_maksima) / (t[len(t)-1] - t[0])
+    return len(series_maksima[0]) / (t[len(t)-1] - t[0])
 
+
+def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, quantif):
+    s_pos = []
+    k_axis, freq_axis = np.meshgrid(k_range, freq_ratio)
+    k_axis = k_axis.flatten()
+    freq_axis = freq_axis.flatten()
+    for k in k_range:
+        p[1][6] = k
+        for f_r in freq_ratio:
+            s_pos.append(0)
+            p[1][4] = f_r * p[0][4]
+
+    f_pos = (np.array(freq_drive) / np.array(freq_driven)).tolist()
+    fig = plt.figure()
+    ax = Axes3D(fig)
+
+    ax.bar3d(k_axis, f_pos, s_pos, 0.07, 0.01, quantif, alpha=0.4)
+    ax.set_xlabel('k')
+    ax.set_ylabel('f1:f2')
+    ax.set_zlabel('synchronization')
+    plt.ylim([0, 1.5])
+    plt.savefig("/home/kasia/Pulpit/inzynierka/quantification_hist.png")
+    plt.show(block=False)
+
+
+def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, quantif):
+    k_axis = []
+    for k in k_range:
+        p[1][6] = k
+        for f_r in freq_ratio:
+            p[1][4] = f_r * p[0][4]
+            k_axis.append(k)
+
+    f_axis = (np.array(freq_drive) / np.array(freq_driven)).tolist()
+
+    plot_params = {'figure.figsize': (8, 6)}
+    plt.rcParams.update(plot_params)
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    ax.plot_trisurf(k_axis, f_axis, quantif, cmap=cm.jet)
+    ax.set_xlabel('k')
+    ax.set_ylabel('f1:f2')
+    ax.set_zlabel('synchronization')
+    plt.ylim([0, 1.5])
+    plt.savefig("/home/kasia/Pulpit/inzynierka/quantification.png")
+    plt.show(block=False)
+
+
+
+#np.diff(faza)/delta t
