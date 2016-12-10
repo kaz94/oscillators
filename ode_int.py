@@ -1,8 +1,9 @@
 from matplotlib import pyplot as plt
 from scipy.integrate import odeint
 from functions import timeSeries, plot_synchrograms, load_params, vector_field, get_phases, \
-    plot_hist_synchronization, plot_trisurf_synchronization
+    plot_hist_synchronization, plot_trisurf_synchronization, frequency, fit_params
 import numpy as np
+from scipy.signal import argrelmax
 
 
 def dynamics():
@@ -13,8 +14,8 @@ def dynamics():
                   atol=abserr, rtol=relerr)
 
     # cut unstable points
-    t = t[100:]
-    wsol = wsol[100:, :]
+    t = t[200:]
+    wsol = wsol[200:, :]
 
     plot_params = {'figure.figsize': (12, 10),
                    'axes.labelsize': 'x-small',
@@ -25,8 +26,10 @@ def dynamics():
 
     # dynamika i wykresy przebiegow czasowych
     phases = get_phases(wsol, n)
+    '''
     if plot:
-        conn_no_dupl = timeSeries(t, wsol, n, p, phases)
+        timeSeries(t, wsol, n, p, phases)
+    '''
     # save phase-space charts for different parameters values
     # save_p_s(n, wsol,p)
 
@@ -36,12 +39,15 @@ def dynamics():
         if len(c[1]) > 0:
             any_coupling = True
 
+    '''
     if any_coupling:
         plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driven, plot)
+    '''
+
+    fit_params(t, phases, p)
 
 
 w0, p, couplings_gl = load_params() # load params from file
-
 
 n = int(len(w0)/2)
 
@@ -85,3 +91,4 @@ else:
     dynamics()
 
 plt.show()
+

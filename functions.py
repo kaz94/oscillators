@@ -4,6 +4,8 @@ import numpy as np
 from scipy.signal import argrelmax
 from ReadAdjacencyMatrix import read_file
 from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+from scipy.optimize import curve_fit
 
 
 def load_params():
@@ -20,7 +22,6 @@ def load_params():
     return w, params, couplings_gl
 
 
-from mpl_toolkits.mplot3d import Axes3D
 def vector_field(w, t, p):
     """
         w :  vector of the state variables: w = [x1,y1,x2,y2,...]
@@ -110,6 +111,16 @@ def get_phases(wsol, n):
     return phases
 
 
+def coherence(phases1, phases2):
+    phases_diff = phases1-phases2
+    j_phases_diff = np.array([complex(imag=p) for p in phases_diff])
+    return abs(np.sum(np.exp(j_phases_diff)/len(phases_diff)))
+
+
+def frequency(series_maksima, t):
+    return len(series_maksima[0]) / (t[len(t)-1] - t[0])
+
+
 def plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driven, plot=True):
 
     t = np.asarray(t)
@@ -151,7 +162,7 @@ def plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driv
                 plt.ylabel("Phase")
                 plt.legend(prop={'size': 50 / n})
 
-            # quantification:
+            # coherence:
 
             f_drive = frequency(argrelmax(phases[int(from_osc)]), t)
             f_driven = frequency(argrelmax(phases[int(i)]), t)
@@ -161,12 +172,10 @@ def plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driv
             ratio = f_drive / f_driven
 
             # 1:1
-            q11 = quantification(drive, driven)
+            q11 = coherence(drive, driven)
 
 
             quantif.append(q11)
-            #print("f ratio:",np.round(ratio,3))
-            #print(np.round(q1,2), np.round(q2,2), np.round(q3,2))
 
     if plot:
         plt.tight_layout(h_pad=1)
@@ -184,16 +193,6 @@ def save_p_s(n, wsol, p):
         plt.legend(prop={'size': 30 / n})
         plt.savefig("".join(["/home/kasia/Pulpit/inzynierka/mi", str(i)]))
         plt.clf()
-
-
-def quantification(phases1, phases2):
-    phases_diff = phases1-phases2
-    j_phases_diff = np.array([complex(imag=p) for p in phases_diff])
-    return abs(np.sum(np.exp(j_phases_diff)/len(phases_diff)))
-
-
-def frequency(series_maksima, t):
-    return len(series_maksima[0]) / (t[len(t)-1] - t[0])
 
 
 def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, quantif):
@@ -239,9 +238,37 @@ def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p
     ax.set_ylabel('f1:f2')
     ax.set_zlabel('synchronization')
     plt.ylim([0, 1.5])
-    plt.savefig("/home/kasia/Pulpit/inzynierka/quantification.png")
+    plt.savefig("/home/kasia/Pulpit/inzynierka/coherence.png")
     plt.show(block=False)
 
 
+def function(x, a, b, c, d):
+    return a * np.log(b * x + c) + d
+
+
+def fit_params(t, phases, p):
+    # f and frequency ratio
+    frequencies = []
+    f_list = []
+    t = np.array(t)
+    tt = t[100: len(t) - 100]
+    for i, phase in enumerate(phases):
+        phase = np.array(phase[100:len(phase) - 100])
+        f_list.append(p[i][4])
+        peaks_1 = argrelmax(phase)[0]
+        t_period = tt[peaks_1[len(peaks_1) - 1]] - tt[peaks_1[0]]
+        frequencies.append((len(phase[peaks_1]) - 1) / t_period)
+
+    popt, pcov = curve_fit(function, np.array(f_list), np.array(frequencies))
+    print("dopasowanie:", popt)
+    plt.plot(f_list, frequencies, 'ko', label="Original Data")
+    fit = function(np.array(f_list), *popt)
+    plt.plot(f_list, fit, 'r-', label="Fitted Curve")
+    plt.text(1,1.3,"frequency = a * log(b * f + c) + d")
+    plt.text(1,1.2,str(popt))
+    plt.xlabel("f - parameter")
+    plt.ylabel("frequency")
+    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_dop.png")
+    plt.show()
 
 #np.diff(faza)/delta t
