@@ -1,7 +1,8 @@
 from matplotlib import pyplot as plt
 from scipy.integrate import odeint
 from functions import timeSeries, plot_synchrograms, load_params, vector_field, get_phases, \
-    plot_hist_synchronization, plot_trisurf_synchronization, frequency, fit_params
+    plot_hist_synchronization, plot_trisurf_synchronization, frequency, fit_f, \
+    freq_fit_function, fit_freq
 import numpy as np
 from scipy.signal import argrelmax
 
@@ -26,12 +27,8 @@ def dynamics():
 
     # dynamika i wykresy przebiegow czasowych
     phases = get_phases(wsol, n)
-    '''
-    if plot:
-        timeSeries(t, wsol, n, p, phases)
-    '''
-    # save phase-space charts for different parameters values
-    # save_p_s(n, wsol,p)
+    '''if plot:
+        timeSeries(t, wsol, n, p, phases)'''
 
     # synchrogramy
     any_coupling = False
@@ -39,13 +36,14 @@ def dynamics():
         if len(c[1]) > 0:
             any_coupling = True
 
-    '''
     if any_coupling:
-        plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driven, plot)
-    '''
+        f_drive, f_driven = plot_synchrograms(t, phases, couplings_gl, n, quantif, plot)
+        freq_drive.append(f_drive)
+        freq_driven.append(f_driven)
 
-    fit_params(t, phases, p)
-
+    if not automate:
+        fit_f_parameters = fit_f(t, phases, p)
+        fit_freq_parameters2 = fit_freq(t, phases, p)
 
 w0, p, couplings_gl = load_params() # load params from file
 
@@ -73,8 +71,12 @@ if automate:
     freq_drive = []
     freq_driven = []
     k_range = np.arange(0., 1., 0.2)
-    freq_ratio = np.arange(0.1, 1., 0.2)
+    freq_ratio = np.arange(0.11, 1., 0.2)
 
+    #fit_parameters = [ 0.51226277, 0.11745076, 0.66762324, 0.28301999] # for frequency = ...
+    f_parameters = [ 29.33256013,   1.99857513,   0.0785717 ] # for f = ...
+    freq_parameters = [ 0.18666117,  0.98518362, -0.05311368, -0.00331252]
+    p[0][4] = freq_fit_function(p[0][4], *freq_parameters)
     for k in k_range:
         p[1][6] = k
         for f_r in freq_ratio:

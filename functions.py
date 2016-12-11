@@ -121,8 +121,7 @@ def frequency(series_maksima, t):
     return len(series_maksima[0]) / (t[len(t)-1] - t[0])
 
 
-def plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driven, plot=True):
-
+def plot_synchrograms(t, phases, couplings_gl, n, quantif, plot=True):
     t = np.asarray(t)
     if plot:
         subplots = 0
@@ -163,24 +162,18 @@ def plot_synchrograms(t, phases, couplings_gl, n, quantif, freq_drive, freq_driv
                 plt.legend(prop={'size': 50 / n})
 
             # coherence:
+            freq_drive = frequency(argrelmax(phases[int(from_osc)]), t)
+            freq_driven = frequency(argrelmax(phases[int(i)]), t)
+            #ratio = freq_drive / freq_driven
 
-            f_drive = frequency(argrelmax(phases[int(from_osc)]), t)
-            f_driven = frequency(argrelmax(phases[int(i)]), t)
-            freq_drive.append(f_drive)
-            freq_driven.append(f_driven)
-
-            ratio = f_drive / f_driven
-
-            # 1:1
-            q11 = coherence(drive, driven)
-
-
-            quantif.append(q11)
+            q = coherence(drive, driven)
+            quantif.append(q)
 
     if plot:
         plt.tight_layout(h_pad=1)
         plt.savefig("/home/kasia/Pulpit/inzynierka/synchro")
         plt.show()
+    return freq_drive, freq_driven
 
 
 def save_p_s(n, wsol, p):
@@ -206,11 +199,11 @@ def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, q
             s_pos.append(0)
             p[1][4] = f_r * p[0][4]
 
-    f_pos = (np.array(freq_drive) / np.array(freq_driven)).tolist()
+    #f_pos = (np.array(freq_drive) / np.array(freq_driven)).tolist()
     fig = plt.figure()
     ax = Axes3D(fig)
 
-    ax.bar3d(k_axis, f_pos, s_pos, 0.07, 0.01, quantif, alpha=0.4)
+    ax.bar3d(k_axis, freq_axis, s_pos, 0.07, 0.01, quantif, alpha=0.4)
     ax.set_xlabel('k')
     ax.set_ylabel('f1:f2')
     ax.set_zlabel('synchronization')
@@ -221,13 +214,15 @@ def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, q
 
 def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, quantif):
     k_axis = []
+    f_axis = []
     for k in k_range:
         p[1][6] = k
         for f_r in freq_ratio:
             p[1][4] = f_r * p[0][4]
             k_axis.append(k)
+            f_axis.append(f_r)
 
-    f_axis = (np.array(freq_drive) / np.array(freq_driven)).tolist()
+    #f_axis = (np.array(freq_drive) / np.array(freq_driven)).tolist()
 
     plot_params = {'figure.figsize': (8, 6)}
     plt.rcParams.update(plot_params)
@@ -242,11 +237,15 @@ def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p
     plt.show(block=False)
 
 
-def function(x, a, b, c, d):
-    return a * np.log(b * x + c) + d
+def freq_fit_function(x, a, b, c, d):
+    return a * np.sqrt(b * x + c) + d
 
 
-def fit_params(t, phases, p):
+def f_fit_function(x, a, b, c):
+    return a * x**b + c
+
+
+def fit_f(t, phases, p):
     # f and frequency ratio
     frequencies = []
     f_list = []
@@ -258,17 +257,52 @@ def fit_params(t, phases, p):
         peaks_1 = argrelmax(phase)[0]
         t_period = tt[peaks_1[len(peaks_1) - 1]] - tt[peaks_1[0]]
         frequencies.append((len(phase[peaks_1]) - 1) / t_period)
+    popt, pcov = curve_fit(f_fit_function, np.array(frequencies), np.array(f_list))
+    fit = f_fit_function(np.array(frequencies), *popt)
 
-    popt, pcov = curve_fit(function, np.array(f_list), np.array(frequencies))
-    print("dopasowanie:", popt)
+    plt.plot(frequencies, f_list, 'ko', label="Original Data")
+    plt.plot(frequencies, fit, 'r-', label="Fitted Curve")
+    plt.text(0.01,40,"f = a * frequency^b + c")
+    plt.text(0.01,38,str(popt))
+    plt.ylabel("f - parameter")
+    plt.xlabel("frequency")
+    plt.legend()
+    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_f.png")
+    plt.show()
+    plt.plot(frequencies, np.sqrt(f_list), 'ko', label="Original Data")
+    plt.ylabel("sqrt(f)")
+    plt.xlabel("frequency")
+    plt.legend()
+    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_f.png")
+
+    plt.show()
+    return popt
+
+
+def fit_freq(t, phases, p):
+    # f and frequency ratio
+    frequencies = []
+    f_list = []
+    t = np.array(t)
+    tt = t[100: len(t) - 100]
+    for i, phase in enumerate(phases):
+        phase = np.array(phase[100:len(phase) - 100])
+        f_list.append(p[i][4])
+        peaks_1 = argrelmax(phase)[0]
+        t_period = tt[peaks_1[len(peaks_1) - 1]] - tt[peaks_1[0]]
+        frequencies.append((len(phase[peaks_1]) - 1) / t_period)
+    popt, pcov = curve_fit(freq_fit_function, np.array(f_list), np.array(frequencies))
+    fit = freq_fit_function(np.array(f_list), *popt)
+
     plt.plot(f_list, frequencies, 'ko', label="Original Data")
-    fit = function(np.array(f_list), *popt)
     plt.plot(f_list, fit, 'r-', label="Fitted Curve")
-    plt.text(1,1.3,"frequency = a * log(b * f + c) + d")
-    plt.text(1,1.2,str(popt))
+    plt.text(1,1.3,"frequency = a * sqrt(b * f + c) + d")
+    plt.text(1,1.1,str(popt))
     plt.xlabel("f - parameter")
     plt.ylabel("frequency")
-    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_dop.png")
+    plt.legend()
+    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_freq.png")
     plt.show()
+    return popt
 
 #np.diff(faza)/delta t
