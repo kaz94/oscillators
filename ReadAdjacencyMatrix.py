@@ -1,7 +1,7 @@
 import csv
 
 filename = '/home/kasia/Pulpit/macierz.csv'
-file = '/home/kasia/Pulpit/inzynierka/macierz_do_f.txt'
+file = '/home/kasia/Pulpit/inzynierka/macierz.txt'
 
 # csv.register_dialect('csv', quoting=csv.QUOTE_NONE)
 

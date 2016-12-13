@@ -121,7 +121,7 @@ def frequency(series_maksima, t):
     return len(series_maksima[0]) / (t[len(t)-1] - t[0])
 
 
-def plot_synchrograms(t, phases, couplings_gl, n, quantif, plot=True):
+def plot_synchrograms(t, phases, couplings_gl, n, quantif, idx, plot=True):
     t = np.asarray(t)
     if plot:
         subplots = 0
@@ -164,9 +164,15 @@ def plot_synchrograms(t, phases, couplings_gl, n, quantif, plot=True):
             # coherence:
             freq_drive = frequency(argrelmax(phases[int(from_osc)]), t)
             freq_driven = frequency(argrelmax(phases[int(i)]), t)
-            #ratio = freq_drive / freq_driven
 
+            drive = phases[int(from_osc)]
+            driven = phases[i]
             q = coherence(drive, driven)
+            '''q = coherence(f_r[0]*drive % 2 * np.pi, f_r[1] * driven % 2 * np.pi)
+            plt.plot(t, f_r[0]*drive % 2 * np.pi)
+            plt.plot(t, f_r[1] * driven % 2 * np.pi)
+            plt.show()
+            # moze zle obcinac'''
             quantif.append(q)
 
     if plot:
@@ -207,7 +213,7 @@ def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, q
     ax.set_xlabel('k')
     ax.set_ylabel('f1:f2')
     ax.set_zlabel('synchronization')
-    plt.ylim([0, 1.5])
+    #plt.ylim([0, 1.5])
     plt.savefig("/home/kasia/Pulpit/inzynierka/quantification_hist.png")
     plt.show(block=False)
 
@@ -218,7 +224,7 @@ def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p
     for k in k_range:
         p[1][6] = k
         for f_r in freq_ratio:
-            p[1][4] = f_r * p[0][4]
+            p[1][4] = p[0][4] + f_r
             k_axis.append(k)
             f_axis.append(f_r)
 
@@ -230,13 +236,13 @@ def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p
     ax = fig.gca(projection='3d')
     ax.plot_trisurf(k_axis, f_axis, quantif, cmap=cm.jet)
     ax.set_xlabel('k')
-    ax.set_ylabel('f1:f2')
+    ax.set_ylabel('delta')
     ax.set_zlabel('synchronization')
-    plt.ylim([0, 1.5])
+    #plt.ylim([0, 1.5])
     plt.savefig("/home/kasia/Pulpit/inzynierka/coherence.png")
     plt.show(block=False)
 
-
+'''
 def freq_fit_function(x, a, b, c, d):
     return a * np.sqrt(b * x + c) + d
 
@@ -304,5 +310,9 @@ def fit_freq(t, phases, p):
     plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_freq.png")
     plt.show()
     return popt
-
+'''
 #np.diff(faza)/delta t
+
+
+#dodawanie po kazdym piku
+#[000..., 111, 2222...] * 2pi * faza
