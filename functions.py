@@ -6,6 +6,7 @@ from ReadAdjacencyMatrix import read_file
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.optimize import curve_fit
+from matplotlib.ticker import MaxNLocator
 
 
 def load_params():
@@ -120,8 +121,19 @@ def coherence(phases1, phases2):
 def frequency(series_maksima, t):
     return len(series_maksima[0]) / (t[len(t)-1] - t[0])
 
+def arnold_tongue_1_1():
+    data = np.loadtxt("out.dat")
+    k_ax = data[:, 0]
+    delta_ax = data[:, 1]
+    quantif = data[:, 2]
+    # czasem nie ma oscylacji... ????
+    len_k = len(k_ax[k_ax == k_ax[0]])
+    len_delta = int(len(k_ax) / len_k)
+    plot_map(k_ax, delta_ax, quantif, len_k, len_delta)
+    plt.show()
 
-def plot_synchrograms(t, phases, couplings_gl, n, quantif, idx, plot=True):
+
+def plot_synchrograms(t, phases, couplings_gl, n, quantif, plot=True):
     t = np.asarray(t)
     if plot:
         subplots = 0
@@ -168,11 +180,6 @@ def plot_synchrograms(t, phases, couplings_gl, n, quantif, idx, plot=True):
             drive = phases[int(from_osc)]
             driven = phases[i]
             q = coherence(drive, driven)
-            '''q = coherence(f_r[0]*drive % 2 * np.pi, f_r[1] * driven % 2 * np.pi)
-            plt.plot(t, f_r[0]*drive % 2 * np.pi)
-            plt.plot(t, f_r[1] * driven % 2 * np.pi)
-            plt.show()
-            # moze zle obcinac'''
             quantif.append(q)
 
     if plot:
@@ -194,7 +201,7 @@ def save_p_s(n, wsol, p):
         plt.clf()
 
 
-def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, quantif):
+def plot_hist_synchronization(k_range, freq_ratio, p, quantif):
     s_pos = []
     k_axis, freq_axis = np.meshgrid(k_range, freq_ratio)
     k_axis = k_axis.flatten()
@@ -205,7 +212,6 @@ def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, q
             s_pos.append(0)
             p[1][4] = f_r * p[0][4]
 
-    #f_pos = (np.array(freq_drive) / np.array(freq_driven)).tolist()
     fig = plt.figure()
     ax = Axes3D(fig)
 
@@ -218,18 +224,32 @@ def plot_hist_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, q
     plt.show(block=False)
 
 
-def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p, quantif):
-    k_axis = []
-    f_axis = []
-    for k in k_range:
-        p[1][6] = k
-        for f_r in freq_ratio:
-            p[1][4] = p[0][4] + f_r
-            k_axis.append(k)
-            f_axis.append(f_r)
+def plot_map(k, delta, quantif, len_k, len_delta):
+    plt.clf()
+    dx, dy = 0.06, 0.02
+    #delta_axis, k_axis = np.meshgrid(delta_range, k_range)
+    #delta_axis = delta_range.reshape()
+    quantif = quantif.reshape(len_delta, len_k)
+    delta_axis = np.array(delta).reshape(len_k, len_delta)
+    k_axis = np.array(k).reshape(len_delta, len_k)
+    quantif = quantif[:-1, :-1]
+    levels = MaxNLocator(nbins=15).tick_values(quantif.min(), quantif.max())
+    cmap = plt.get_cmap('PiYG')
 
-    #f_axis = (np.array(freq_drive) / np.array(freq_driven)).tolist()
+    plt.contourf(delta_axis[:-1, :-1] + dx / 2.,
+                      k_axis[:-1, :-1] + dy / 2., quantif, levels=levels,
+                      cmap=cmap)
+    plt.colorbar()
+    plt.title('Mapa synchronizacji 1:1')
+    plt.xlabel("delta")
+    plt.ylabel("siła sprzezenia k")
+    plt.tight_layout()
+    plt.savefig("/home/kasia/Pulpit/inzynierka/coherence.png")
 
+    plt.show(block = False)
+
+
+def plot_trisurf_synchronization(k_axis, f_axis, quantif):
     plot_params = {'figure.figsize': (8, 6)}
     plt.rcParams.update(plot_params)
     fig = plt.figure()
@@ -238,7 +258,6 @@ def plot_trisurf_synchronization(k_range, freq_ratio, freq_drive, freq_driven, p
     ax.set_xlabel('k')
     ax.set_ylabel('delta')
     ax.set_zlabel('synchronization')
-    #plt.ylim([0, 1.5])
     plt.savefig("/home/kasia/Pulpit/inzynierka/coherence.png")
     plt.show(block=False)
 
