@@ -41,6 +41,9 @@ def vector_field(w, t, p):
     for o in range(0, int(len(w)/2)):
         equasions.append(y[o])
         params = {'alfa': p[o][0], 'mi': p[o][1], 'd': p[o][2], 'e': p[o][3], 'f': p[o][4]}
+
+        # passed frequency has to be calculated to parameter f:
+        params['f'] = 29.3*params['f']**2
         couplings = p[o][5:]
         couplings = list(zip(couplings[0::2], couplings[1::2]))
         eq = -1 * params['alfa'] * (x[o] ** 2 - params['mi']) * \
@@ -112,8 +115,14 @@ def get_phases(wsol, n):
     return phases
 
 
-def coherence(phases1, phases2):
-    phases_diff = phases1-phases2
+def coherence(freq1, n, freq2, m):
+    f1, f2 = np.copy(freq1), np.copy(freq2)
+    f1 += np.pi
+    f2 += np.pi
+    f1 = np.unwrap(f1) % (2 * n * np.pi) / n
+    f2 = np.unwrap(f2) % (2 * m * np.pi) / m
+
+    phases_diff = f1-f2
     j_phases_diff = np.array([complex(imag=p) for p in phases_diff])
     return abs(np.sum(np.exp(j_phases_diff)/len(phases_diff)))
 
@@ -121,19 +130,19 @@ def coherence(phases1, phases2):
 def frequency(series_maksima, t):
     return len(series_maksima[0]) / (t[len(t)-1] - t[0])
 
-def arnold_tongue_1_1():
+
+def arnold_tongue():
     data = np.loadtxt("out.dat")
     k_ax = data[:, 0]
     delta_ax = data[:, 1]
     quantif = data[:, 2]
-    # czasem nie ma oscylacji... ????
     len_k = len(k_ax[k_ax == k_ax[0]])
     len_delta = int(len(k_ax) / len_k)
     plot_map(k_ax, delta_ax, quantif, len_k, len_delta)
     plt.show()
 
 
-def plot_synchrograms(t, phases, couplings_gl, n, quantif, plot=True):
+def plot_synchrograms(t, phases, couplings_gl, quantif, plot=True):
     t = np.asarray(t)
     if plot:
         subplots = 0
@@ -153,7 +162,7 @@ def plot_synchrograms(t, phases, couplings_gl, n, quantif, plot=True):
             from_osc = osc_i_couplings[0][0]
 
             # find peaks in the drive signal
-            peak_indexes = argrelmax(phases[int(from_osc)])
+            peak_indexes = argrelmax(phases[int(from_osc)], order=5)
 
             drive = phases[int(from_osc)][peak_indexes]
             driven = phases[i][peak_indexes]
@@ -171,22 +180,31 @@ def plot_synchrograms(t, phases, couplings_gl, n, quantif, plot=True):
                 plt.title(' '.join(["Synchrogram, k=", str(strength)]))
                 plt.xlabel("t")
                 plt.ylabel("Phase")
-                plt.legend(prop={'size': 50 / n})
+                plt.legend(prop={'size': 50 / len(couplings_gl)})
+
+            '''freq_drive = frequency(argrelmax(phases[int(from_osc)], order=5), t)
+            freq_driven = frequency(argrelmax(phases[int(i)], order=5), t)'''
 
             # coherence:
-            freq_drive = frequency(argrelmax(phases[int(from_osc)]), t)
-            freq_driven = frequency(argrelmax(phases[int(i)]), t)
-
             drive = phases[int(from_osc)]
             driven = phases[i]
-            q = coherence(drive, driven)
+            N=1
+            M=1
+            q = coherence(drive, N, driven, M)
             quantif.append(q)
+
+            # testy
+            print(q)
+            '''with open("test.dat", "w") as f:
+                f.write(" ".join(map(str, t)) + "\n")
+                f.write(" ".join(map(str, phases[int(from_osc)])) + "\n")
+                f.write(" ".join(map(str, phases[i])) + "\n")'''
+
 
     if plot:
         plt.tight_layout(h_pad=1)
-        plt.savefig("/home/kasia/Pulpit/inzynierka/synchro")
+        plt.savefig("synchro")
         plt.show()
-    return freq_drive, freq_driven
 
 
 def save_p_s(n, wsol, p):
@@ -197,7 +215,7 @@ def save_p_s(n, wsol, p):
         plt.xlabel("x")
         plt.ylabel("y")
         plt.legend(prop={'size': 30 / n})
-        plt.savefig("".join(["/home/kasia/Pulpit/inzynierka/mi", str(i)]))
+        plt.savefig("".join(["mi", str(i)]))
         plt.clf()
 
 
@@ -220,13 +238,16 @@ def plot_hist_synchronization(k_range, freq_ratio, p, quantif):
     ax.set_ylabel('f1:f2')
     ax.set_zlabel('synchronization')
     #plt.ylim([0, 1.5])
-    plt.savefig("/home/kasia/Pulpit/inzynierka/quantification_hist.png")
+    plt.savefig("quantification_hist.png")
     plt.show(block=False)
 
 
 def plot_map(k, delta, quantif, len_k, len_delta):
     plt.clf()
-    dx, dy = 0.06, 0.02
+    k_diff=np.diff(k)
+    delta_diff=np.diff(delta)
+    dx = k_diff[k_diff!=0][0]
+    dy = delta_diff[delta_diff!=0][0]
     #delta_axis, k_axis = np.meshgrid(delta_range, k_range)
     #delta_axis = delta_range.reshape()
     quantif = quantif.reshape(len_delta, len_k)
@@ -244,7 +265,7 @@ def plot_map(k, delta, quantif, len_k, len_delta):
     plt.xlabel("delta")
     plt.ylabel("siła sprzezenia k")
     plt.tight_layout()
-    plt.savefig("/home/kasia/Pulpit/inzynierka/coherence.png")
+    plt.savefig("coherence.png")
 
     plt.show(block = False)
 
@@ -258,7 +279,7 @@ def plot_trisurf_synchronization(k_axis, f_axis, quantif):
     ax.set_xlabel('k')
     ax.set_ylabel('delta')
     ax.set_zlabel('synchronization')
-    plt.savefig("/home/kasia/Pulpit/inzynierka/coherence.png")
+    plt.savefig("coherence.png")
     plt.show(block=False)
 
 '''
@@ -292,13 +313,13 @@ def fit_f(t, phases, p):
     plt.ylabel("f - parameter")
     plt.xlabel("frequency")
     plt.legend()
-    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_f.png")
+    plt.savefig("przelicznik_f.png")
     plt.show()
     plt.plot(frequencies, np.sqrt(f_list), 'ko', label="Original Data")
     plt.ylabel("sqrt(f)")
     plt.xlabel("frequency")
     plt.legend()
-    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_f.png")
+    plt.savefig("przelicznik_f.png")
 
     plt.show()
     return popt
@@ -326,7 +347,7 @@ def fit_freq(t, phases, p):
     plt.xlabel("f - parameter")
     plt.ylabel("frequency")
     plt.legend()
-    plt.savefig("/home/kasia/Pulpit/inzynierka/przelicznik_freq.png")
+    plt.savefig("przelicznik_freq.png")
     plt.show()
     return popt
 '''
