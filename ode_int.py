@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 from scipy.integrate import odeint
-from functions import timeSeries, plot_synchrograms, load_params, vector_field, get_phases, \
-    arnold_tongue
+from functions import plot_synchrograms, load_params, vector_field, get_phases
+from plotting import timeSeries, arnold_tongue
 import numpy as np
 
 # ODE solver parameters
@@ -18,14 +18,13 @@ def synchrograms_from_file():
     dynamics(True, n, w0, p, couplings_gl, quantif)
 
 
-def dynamics(plot, n, w0, p, couplings_gl, quantif):
+def dynamics(plot, n, w0, p, couplings_gl, quantif, N=1, M=1):
     t = [stoptime * float(i) / (numpoints - 1) for i in range(numpoints)]
     # Call the ODE solver.
     wsol = odeint(vector_field, w0, t, args=(p,),
                   atol=abserr, rtol=relerr)
 
     # cut unstable points
-    #if automate:
     t = t[300:]
     wsol = wsol[300:, :]
 
@@ -48,17 +47,10 @@ def dynamics(plot, n, w0, p, couplings_gl, quantif):
             any_coupling = True
 
     if any_coupling:
-        #f_drive, f_driven = \
-        plot_synchrograms(t, phases, couplings_gl, quantif, plot)
-        #freq_drive.append(f_drive)
-        #freq_driven.append(f_driven)
-    '''if not automate:
-        fit_f_parameters = fit_f(t, phases, p)
-        fit_freq_parameters2 = fit_freq(t, phases, p)'''
+        plot_synchrograms(t, phases, couplings_gl, quantif, N, M, plot)
 
 
-def automate():
-    #if automate:
+def automate(N, M):
     couplings_gl = []
     #     x,   y
     w0 = [0.1, 0.1,
@@ -72,23 +64,30 @@ def automate():
         couplings_gl.append([i, list(zip(osc[5::2], osc[6::2]))])
     quantif = []
     # must have equal lengths:
-    k_range = np.linspace(0., 1.0, 10)
-    delta_range = np.linspace(-0.15, .15, 10)
+    k_range = np.linspace(0., 1.0, 40)
+    delta_range = np.linspace(-0.15, .15, 40)
 
-    with open("out.dat", 'w') as f:
-        p[0][4] = 0.2
-        p[1][4] = 0.2
+    with open("out"+str(N)+"_"+str(M)+".dat", 'w') as f:
+        # N - drive (0), M - driven (1)
+        base_freq = 0.2
         ii = 0
+        p[0][4] = N*base_freq
         for k in k_range:
             p[1][6] = k
             for delta in delta_range:
                 # freq = 0.2*sqrt(f)
-                p[1][4] = 0.2 + delta
-                dynamics(False, n, w0, p, couplings_gl, quantif)
-                f.write(" ".join(map(str, [k, delta, quantif[ii]])) + "\n")
+                p[1][4] = M*base_freq + delta
+                dynamics(False, n, w0, p, couplings_gl, quantif, N, M)
+                f.write(" ".join(map(str, [k, p[1][4], quantif[ii]])) + "\n")
                 ii += 1
-    arnold_tongue()
 
 
-#automate()
-synchrograms_from_file()
+#automate(1, 1)
+#automate(1, 2)
+#automate(1, 3)
+arnold_tongue(1, 3)
+arnold_tongue(1, 2)
+arnold_tongue(1, 1)
+plt.show()
+plt.savefig("1_2_3.png")
+#synchrograms_from_file()
