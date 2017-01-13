@@ -28,7 +28,7 @@ def vector_field(w, t, p):
         d: -saddle
         e: -node
           dx/dt = y
-          dy/dt2 = -alfa(x^2 - mi)y - f*x(x+d)(x+e) / de = 0
+          dy/dt2 = -alfa(x^2 - mi)y - f*x(x+d)(x+e) = 0
     """
 
     # Create equasions = (x1',y1',x2',y2'):
@@ -79,48 +79,13 @@ def frequency(series_maksima, t):
     return len(series_maksima[0]) / (t[len(t)-1] - t[0])
 
 
-def plot_synchrograms(t, phases, couplings_gl, quantif, N, M, plot=True):
-    t = np.asarray(t)
-    if plot:
-        subplots = 0
-        for i, coupl in enumerate(couplings_gl):
-            if len(coupl[1]) > 0:
-                subplots += 1
-
-        plot_params = {'figure.figsize': (10, 3*subplots)}
-        plt.rcParams.update(plot_params)
-        active_subplot = 0
+def synchronization(phases, couplings_gl, N, M):
+    quantif = []
 
     for i, coupl in enumerate(couplings_gl):
         osc_i_couplings = coupl[1]
         if len(osc_i_couplings) > 0:
-
-            strength = osc_i_couplings[0][1]
             from_osc = osc_i_couplings[0][0]
-
-            # find peaks in the drive signal
-            peak_indexes = argrelmax(phases[int(from_osc)], order=5)
-
-            drive = phases[int(from_osc)][peak_indexes]
-            driven = phases[i][peak_indexes]
-
-            if plot:
-                active_subplot += 1
-                plt.subplot(subplots, 1, active_subplot)
-
-                plt.scatter(t[peak_indexes], drive, label=' '.join(["osc", str(int(from_osc))]))
-                plt.plot(t, phases[int(from_osc)])
-
-                plt.scatter(t[peak_indexes], driven, label=' '.join(["osc", str(i)]), color="red")
-                plt.plot(t, phases[i])
-
-                plt.title(' '.join(["Synchrogram, k=", str(strength)]))
-                plt.xlabel("t")
-                plt.ylabel("Phase")
-                plt.legend(prop={'size': 50 / len(couplings_gl)})
-
-            '''freq_drive = frequency(argrelmax(phases[int(from_osc)], order=5), t)
-            freq_driven = frequency(argrelmax(phases[int(i)], order=5), t)'''
 
             # coherence:
             drive = phases[int(from_osc)]
@@ -128,18 +93,7 @@ def plot_synchrograms(t, phases, couplings_gl, quantif, N, M, plot=True):
             q = coherence(drive, N, driven, M)
             quantif.append(q)
 
-            # testy
-            print(q)
-            '''with open("test.dat", "w") as f:
-                f.write(" ".join(map(str, t)) + "\n")
-                f.write(" ".join(map(str, phases[int(from_osc)])) + "\n")
-                f.write(" ".join(map(str, phases[i])) + "\n")'''
-
-
-    if plot:
-        plt.tight_layout(h_pad=1)
-        plt.savefig("synchro")
-        plt.show()
+    return quantif
 
 
 def freq_fit_function(x, a, b, c, d):
@@ -209,5 +163,135 @@ def fit_freq(t, phases, p):
     plt.savefig("przelicznik_freq.png")
     plt.show()
     return popt
+
+
+def poincare_protophases(t,wsol, phases, p):
+    x=wsol[:,0]
+    y=wsol[:,1]
+    t=np.array(t)
+    poincare_x_idx = [i for i, j in enumerate(x) if j > (x.max() - x.min()) *1.2/3.]
+    poincare_y_idx = argrelmax(-np.abs(y), order=5)[0]
+    plt.plot(t, y)
+    plt.xlabel("t")
+    plt.ylabel("y")
+    plt.scatter(t[poincare_y_idx], y[poincare_y_idx])
+    plt.show()
+    poincare_points_idx = [i for i in poincare_x_idx if i in poincare_y_idx]
+    plt.scatter(x[poincare_points_idx], y[poincare_points_idx], color="r")
+    plt.plot(x, y)
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
+
+    L = 0.
+    L_i = 0.
+    poincare_protoph = []
+    for i, point in enumerate(poincare_points_idx[:-1]):
+        start = poincare_points_idx[i]
+        stop = poincare_points_idx[i+1]+1
+        trajectory_parts = np.sqrt(np.diff(x[start:stop])**2 + np.diff(y[start:stop])**2)
+        delta_L_i = np.sum(trajectory_parts)
+
+        L += np.cumsum(trajectory_parts)
+        poincare_protoph += list(2.*np.pi*(L - L_i)/delta_L_i + 2.*np.pi*i)
+
+        L_i += delta_L_i
+        L = L[-1]
+
+    plt.plot(t, phases[0], linestyle="--", label="hilbert")
+    poincare_protoph = np.array(poincare_protoph)%(2.*np.pi) - np.pi
+
+    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], poincare_protoph, linestyle="-.", color="r", label="poincare")
+
+    true_ph_poincare = true_phases(poincare_protoph)
+    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], true_ph_poincare, color="g", label="poincare->true")
+    true_ph_hilbert = true_phases(get_phases(wsol,1)[0])
+    plt.plot(t, true_ph_hilbert, color="black", label="hilbert->true")
+    plt.legend()
+    plt.xlabel("t")
+    plt.ylabel("proto(phase)")
+    #plt.savefig("hilbert_poincare_k0.05.png")
+    plt.show()
+
+    return poincare_protoph
+
+
+def true_phases(protophases):
+    protophases = np.array(protophases)
+    N = len(protophases)
+    n_range = np.arange(-10,10)
+    n_range = np.delete(n_range, 10) # remove 0
+    S =  1./N *np.array([ np.sum(np.exp(-1j*n*protophases)) for n in n_range])
+    phases = protophases + np.array([np.sum(S/(1j*n_range) * np.exp(1j*n_range*p-1.)) for p in protophases])
+
+    return phases.real
+
+
+'''def matlab_proto(y, NV):
+
+    x = []
+    S = y.shape
+    if S[0] > S[1]:
+        y = np.transpose(y)
+    y[0,:] = y[0,:] / np.std(y[0,:]);
+    y[1,:] = y[1,:] / np.std(y[1,:]);
+    Pro = np.zeros(len(y))
+    Se = np.zeros(len(y));
+    dd = np.zeros(len(y));
+    theta = np.zeros(len(y));
+
+    for n in range(1, len(y)+1):
+        Pro[n] = np.transpose(NV)*y[:,n]
+
+    IN = 1;
+    for n = 2:length(Pro);
+    if ((Pro(n) > 0) & & (Pro(n - 1) < 0)) ; % Intersection with Poincare plane
+    Se(n) = 1;
+    V(IN) = Pro(n) / (Pro(n) - Pro(n - 1));
+    IN = IN + 1;
+    else
+    Se(n) = 0;
+    end;
+    end;
+    dy = gradient(y); % Computing
+    the
+    covered
+    distance in the
+    state
+    space
+    for n= 1: length(y);
+    dd(n) = norm(dy(:, n));
+    end;
+
+    Dis = cumsum(dd); % Covered
+    distance
+    along
+    the
+    trajectory
+
+    Pmin = find(Se == 1); % Indices
+    of
+    the
+    beginning
+    of
+    the
+    cycles
+
+    for i= 1: length(Pmin) - 1; %
+    Computing
+    protophase
+    theta
+    for j= Pmin(i): Pmin(i + 1) - 1;
+    R1 = V(i) * (Dis(Pmin(i)) - Dis(Pmin(i) - 1));
+    R2 = (1 - V(i + 1)) * (Dis(Pmin(i + 1)) - Dis(Pmin(i + 1) - 1));
+    theta(j) = 2 * pi * (Dis(j) - (Dis(Pmin(i)) - R1)) / ((Dis(Pmin(i + 1) - 1) + R2) - (Dis(Pmin(i)) - R1));
+    end;
+    end;
+    theta = unwrap(theta);
+    Start = Pmin(1);
+    Stop = Pmin(end) - 1;
+    end'''
+
+
 
 

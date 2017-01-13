@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.ticker import MaxNLocator
+from scipy.signal import argrelmax
 import numpy as np
 
 def timeSeries(t, wsol, n, p, phases):
@@ -53,14 +54,87 @@ def timeSeries(t, wsol, n, p, phases):
 '''
 
 
+def plot_synchrograms(t, phases, couplings_gl):
+    t = np.asarray(t)
+    subplots = 0
+    for i, coupl in enumerate(couplings_gl):
+        if len(coupl[1]) > 0:
+            subplots += 1
+
+    plot_params = {'figure.figsize': (10, 3*subplots)}
+    plt.rcParams.update(plot_params)
+    active_subplot = 0
+
+    for i, coupl in enumerate(couplings_gl):
+        osc_i_couplings = coupl[1]
+        if len(osc_i_couplings) > 0:
+
+            strength = osc_i_couplings[0][1]
+            from_osc = osc_i_couplings[0][0]
+
+            # find peaks in the drive signal
+            peak_indexes = argrelmax(phases[int(from_osc)], order=5)
+
+            drive = phases[int(from_osc)][peak_indexes]
+            driven = phases[i][peak_indexes]
+
+            active_subplot += 1
+            plt.subplot(subplots, 1, active_subplot)
+
+            plt.scatter(t[peak_indexes], drive, label=' '.join(["osc", str(int(from_osc))]))
+            plt.plot(t, phases[int(from_osc)])
+
+            plt.scatter(t[peak_indexes], driven, label=' '.join(["osc", str(i)]), color="red")
+            plt.plot(t, phases[i])
+
+            plt.title(' '.join(["Synchrogram, k=", str(strength)]))
+            plt.xlabel("t")
+            plt.ylabel("Phase")
+            plt.legend(prop={'size': 50 / len(couplings_gl)})
+
+    plt.tight_layout(h_pad=1)
+    plt.savefig("synchro")
+    plt.show()
+
+
 def arnold_tongue(N, M):
     data = np.loadtxt("out"+str(N)+"_"+str(M)+".dat")
     k_ax = data[:, 0]
     delta_ax = data[:, 1]
-    quantif = data[:, 2]
+    quantif = data[:, 2:]
     len_k = len(k_ax[k_ax == k_ax[0]])
+
     len_delta = int(len(k_ax) / len_k)
-    plot_map(k_ax, delta_ax, quantif, len_k, len_delta)
+    for col in range(quantif.shape[1]):
+        plot_map(k_ax, delta_ax, quantif[:, col], len_k, len_delta)
+
+
+def plot_map(k, delta, quantif, len_k, len_delta):
+    #plt.clf()
+    k_diff=np.diff(k)
+    delta_diff=np.diff(delta)
+    dx = k_diff[k_diff!=0][0]
+    dy = delta_diff[delta_diff!=0][0]
+    #delta_axis, k_axis = np.meshgrid(delta_range, k_range)
+    #delta_axis = delta_range.reshape()
+    quantif = quantif.reshape(len_delta, len_k)
+    delta_axis = np.array(delta).reshape(len_k, len_delta)
+    k_axis = np.array(k).reshape(len_delta, len_k)
+    quantif = quantif[:-1, :-1]
+    levels = MaxNLocator(nbins=15).tick_values(quantif.min(), quantif.max())
+    cmap = plt.get_cmap('PiYG')
+
+    plt.contourf(delta_axis[:-1, :-1] + dx / 2.,
+                      k_axis[:-1, :-1] + dy / 2., quantif, levels=levels,
+                      cmap=cmap)
+    plt.colorbar()
+    plt.title('Mapa synchronizacji')
+    plt.xlabel("delta")
+    plt.ylabel("siła sprzezenia k")
+    plt.tight_layout()
+
+    #plt.savefig("coherence.png")
+    #plt.show(block=False)
 
 
 def plot_hist_synchronization(k_range, freq_ratio, p, quantif):
@@ -84,34 +158,6 @@ def plot_hist_synchronization(k_range, freq_ratio, p, quantif):
     #plt.ylim([0, 1.5])
     plt.savefig("quantification_hist.png")
     plt.show(block=False)
-
-
-def plot_map(k, delta, quantif, len_k, len_delta):
-    #plt.clf()
-    k_diff=np.diff(k)
-    delta_diff=np.diff(delta)
-    dx = k_diff[k_diff!=0][0]
-    dy = delta_diff[delta_diff!=0][0]
-    #delta_axis, k_axis = np.meshgrid(delta_range, k_range)
-    #delta_axis = delta_range.reshape()
-    quantif = quantif.reshape(len_delta, len_k)
-    delta_axis = np.array(delta).reshape(len_k, len_delta)
-    k_axis = np.array(k).reshape(len_delta, len_k)
-    quantif = quantif[:-1, :-1]
-    levels = MaxNLocator(nbins=15).tick_values(quantif.min(), quantif.max())
-    cmap = plt.get_cmap('PiYG')
-
-    plt.contourf(delta_axis[:-1, :-1] + dx / 2.,
-                      k_axis[:-1, :-1] + dy / 2., quantif, levels=levels,
-                      cmap=cmap)
-    plt.colorbar()
-    plt.title('Mapa synchronizacji 1:1')
-    plt.xlabel("delta")
-    plt.ylabel("siła sprzezenia k")
-    plt.tight_layout()
-
-    #plt.savefig("coherence.png")
-    #plt.show(block = False)
 
 
 def plot_trisurf_synchronization(k_axis, f_axis, quantif):
