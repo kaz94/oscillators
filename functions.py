@@ -4,6 +4,7 @@ import numpy as np
 from scipy.signal import argrelmax
 from ReadAdjacencyMatrix import read_file
 from scipy.optimize import curve_fit
+from itertools import product
 
 
 def load_params():
@@ -171,17 +172,17 @@ def poincare_protophases(t,wsol, phases, p):
     t=np.array(t)
     poincare_x_idx = [i for i, j in enumerate(x) if j > (x.max() - x.min()) *1.2/3.]
     poincare_y_idx = argrelmax(-np.abs(y), order=5)[0]
-    plt.plot(t, y)
+    poincare_points_idx = [i for i in poincare_x_idx if i in poincare_y_idx]
+    '''plt.plot(t, y)
     plt.xlabel("t")
     plt.ylabel("y")
     plt.scatter(t[poincare_y_idx], y[poincare_y_idx])
     plt.show()
-    poincare_points_idx = [i for i in poincare_x_idx if i in poincare_y_idx]
     plt.scatter(x[poincare_points_idx], y[poincare_points_idx], color="r")
     plt.plot(x, y)
     plt.xlabel("x")
     plt.ylabel("y")
-    plt.show()
+    plt.show()'''
 
     L = 0.
     L_i = 0.
@@ -198,7 +199,7 @@ def poincare_protophases(t,wsol, phases, p):
         L_i += delta_L_i
         L = L[-1]
 
-    plt.plot(t, phases[0], linestyle="--", label="hilbert")
+    '''plt.plot(t, phases[0], linestyle="--", label="hilbert")
     poincare_protoph = np.array(poincare_protoph)%(2.*np.pi) - np.pi
 
     plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], poincare_protoph, linestyle="-.", color="r", label="poincare")
@@ -211,7 +212,9 @@ def poincare_protophases(t,wsol, phases, p):
     plt.xlabel("t")
     plt.ylabel("proto(phase)")
     #plt.savefig("hilbert_poincare_k0.05.png")
-    plt.show()
+    plt.show()'''
+
+
 
     return poincare_protoph
 
@@ -222,76 +225,131 @@ def true_phases(protophases):
     n_range = np.arange(-10,10)
     n_range = np.delete(n_range, 10) # remove 0
     S =  1./N *np.array([ np.sum(np.exp(-1j*n*protophases)) for n in n_range])
-    phases = protophases + np.array([np.sum(S/(1j*n_range) * np.exp(1j*n_range*p-1.)) for p in protophases])
+    phases = protophases + \
+             np.array([np.sum(S/(1j*n_range) * np.exp(1j*n_range*p-1.)) for p in protophases])
 
     return phases.real
 
 
-'''def matlab_proto(y, NV):
+def fourier_coeff(phi, dphi, order=10):
+    print(phi.shape)
+    N, nn = phi.shape
+    if N != dphi.shape[0]:
+        raise Exception("Not consistent number of oscillators")
+    if N > 2:
+        raise Exception("Number of oscillators is greater than 2")
 
-    x = []
-    S = y.shape
-    if S[0] > S[1]:
-        y = np.transpose(y)
-    y[0,:] = y[0,:] / np.std(y[0,:]);
-    y[1,:] = y[1,:] / np.std(y[1,:]);
-    Pro = np.zeros(len(y))
-    Se = np.zeros(len(y));
-    dd = np.zeros(len(y));
-    theta = np.zeros(len(y));
+    order1 = order + 1
+    ncf = 2 * order
+    ncf1 = ncf + 1
+    ncf2 = ncf1 * ncf1  # number of coefficients in each dimension
 
-    for n in range(1, len(y)+1):
-        Pro[n] = np.transpose(NV)*y[:,n]
+    # TODO: check if necessary
+    phi = np.unwrap(phi, axis=0)
 
-    IN = 1;
-    for n = 2:length(Pro);
-    if ((Pro(n) > 0) & & (Pro(n - 1) < 0)) ; % Intersection with Poincare plane
-    Se(n) = 1;
-    V(IN) = Pro(n) / (Pro(n) - Pro(n - 1));
-    IN = IN + 1;
-    else
-    Se(n) = 0;
-    end;
-    end;
-    dy = gradient(y); % Computing
-    the
-    covered
-    distance in the
-    state
-    space
-    for n= 1: length(y);
-    dd(n) = norm(dy(:, n));
-    end;
+    # This matrix contains the coefficients
+    # A[n + p, m + q, k + r]
+    # for the linear system of equations to
+    # obtain the coefficients Qcoef[n, m, k]
+    A = np.zeros(([4 * order + 1] * N), dtype=np.complex)
+    print("A.shape: ", A.shape)
+    nmk = list(range(-ncf, ncf1))
 
-    Dis = cumsum(dd); % Covered
-    distance
-    along
-    the
-    trajectory
+    for nmk_ in product(*([nmk, ] * N)):
+        nmk_ = np.array(nmk_)
+        print("nmk_:",nmk_)
+        idx1 = tuple(nmk_ + ncf)
+        idx2 = tuple(-nmk_ + ncf)
 
-    Pmin = find(Se == 1); % Indices
-    of
-    the
-    beginning
-    of
-    the
-    cycles
+        print("A[0,0]:",A[0,0])
+        print("rhs:",nmk_ * phi)
+        return 0
+        A[idx1] = np.mean(np.exp(1j * np.sum(nmk_ * phi, axis=1)))
+        A[idx2] = np.conj(A[idx1])
 
-    for i= 1: length(Pmin) - 1; %
-    Computing
-    protophase
-    theta
-    for j= Pmin(i): Pmin(i + 1) - 1;
-    R1 = V(i) * (Dis(Pmin(i)) - Dis(Pmin(i) - 1));
-    R2 = (1 - V(i + 1)) * (Dis(Pmin(i + 1)) - Dis(Pmin(i + 1) - 1));
-    theta(j) = 2 * pi * (Dis(j) - (Dis(Pmin(i)) - R1)) / ((Dis(Pmin(i + 1) - 1) + R2) - (Dis(Pmin(i)) - R1));
-    end;
-    end;
-    theta = unwrap(theta);
-    Start = Pmin(1);
-    Stop = Pmin(end) - 1;
-    end'''
+    B = np.zeros((ncf1 ** N, N), dtype=np.complex)
+    C = np.zeros((ncf1 ** N, ncf1 ** N), dtype=np.complex)
+
+    idx = 0
+    rsq = list(range(-order, order1))
+    for rsq_ in product(*([rsq, ] * N)):
+        rsq_ = np.array(rsq_)
+        exp = np.exp(-1j * np.sum(rsq_ * phi, axis=1)).reshape(nn, 1)
+        B[idx, :] = np.mean(dphi * exp, axis=0)
+        del exp
+        idx += 1
+        for nmk_ in product(*([rsq, ] * N)):
+            nmk_ = np.array(nmk_)
+            in_idx1 = (rsq_ + order)
+            in_idx1 = in_idx1[0] * ncf2 + in_idx1[1] * ncf1 + in_idx1[2]
+            in_idx2 = (nmk_ + order)
+            in_idx2 = in_idx2[0] * ncf2 + in_idx2[1] * ncf1 + in_idx2[2]
+            out_idx = tuple((nmk_ - rsq_) + ncf)
+            C[in_idx1, in_idx2] = A[out_idx]
+
+    coeff1 = np.dot(np.linalg.inv(C), B[:, 0])
+    coeff2 = np.dot(np.linalg.inv(C), B[:, 1])
+    #coeff3 = np.dot(np.linalg.inv(C), B[:, 2])
+
+    qcoeff1 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
+    qcoeff2 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
+    #qcoeff3 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
+
+    for n in range(ncf1):
+        for m in range(ncf1):
+            for k in range(ncf1):
+                idx = n * ncf2 + m * ncf1 + k
+                qcoeff1[n, m, k] = coeff1[idx]
+                qcoeff2[m, k, n] = coeff2[idx]
+                #qcoeff3[k, n, m] = coeff3[idx]
+
+    return qcoeff1, qcoeff2#, qcoeff3
+
+
+def fourier_coefficients(p1, p2, dphi1, order=10):
+    N_F = order
+    N_F1 = N_F + 1
+    A = np.zeros([4 * N_F + 1, 4 * N_F + 1], dtype=np.complex)
+
+    or2 = 2 * N_F
+    or21 = or2 + 1
+
+    for n in range(-or2, or21):
+        for m in range(-or2, n + 1):
+            A[n + or2, m + or2] = np.mean(np.exp(1j * (n * p1 + m * p2)))
+            A[-n + or2, -m + or2] = A[n + or2, m + or2].conjugate()
+
+    B = np.zeros([or21**2], dtype=np.complex)
+    C = np.zeros([or21**2, or21**2], dtype=np.complex)
+
+    ind = 0
+    for n in range(-N_F, N_F1):
+        i1_1 = (n + N_F) * or21
+        for m in range(-N_F, N_F1):
+            i1 = i1_1 + m + N_F
+            i4 = m + or2
+            tmp = np.exp(-1j * (n * p1 + m * p2))
+            B[ind] = np.mean(dphi1 * tmp)
+            ind += 1
+            for r in range(-N_F, N_F1):
+                i3 = (r + N_F) * or21 + N_F
+                i2 = (n - r) + or2
+                for s in range(-N_F, N_F1):
+                    C[i1, i3 + s] = A[i2, i4 - s]
+
+    qc1 = np.dot(np.linalg.inv(C.conjugate()), B)
+
+    return qc1
 
 
 
+if __name__ == '__main__':
+    x = np.loadtxt("phi3vdp0.5K.txt")
+    N = int(x.shape[1] / 2)
+    phi = x[:, :N]
+    dphi = x[:, N:]
+
+    qc1py = fourier_coefficients(phi[:, 0], phi[:, 1], dphi[:, 0])
+    print(qc1py.shape)
+    print(qc1py)
 

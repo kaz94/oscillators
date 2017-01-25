@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 from scipy.integrate import odeint
-from functions import  load_params, vector_field, get_phases, synchronization, poincare_protophases
+from functions import load_params, vector_field, get_phases, synchronization, \
+    poincare_protophases, true_phases, fourier_coeff
 from plotting import plot_synchrograms,timeSeries, arnold_tongue
 import numpy as np
 
@@ -37,7 +38,18 @@ def dynamics(plot, n, w0, p, couplings_gl, N=1, M=1):
 
     # dynamika i wykresy przebiegow czasowych
     phases = get_phases(wsol, n)
+    phases = np.array(phases)
+    ph_diff = []
+    for phase in phases:
+        ph_diff.append(np.append(np.diff(phase),0))
+    ph_diff = np.array(ph_diff)
+
+
     protophases = poincare_protophases(t, wsol, phases, p)
+    t_phases = true_phases(protophases)
+
+    qcoeff1, qcoeff2 = fourier_coeff(phases, ph_diff)
+
     if plot:
         timeSeries(t, wsol, n, p, phases)
 
@@ -69,7 +81,7 @@ def automate(N, M):
 
     n = int(len(w0) / 2)
     quantif = []
-    print(couplings_gl)
+    print("couplings: ", couplings_gl)
     # must have equal lengths:
     k_range = np.linspace(0., 1.0, points)
     delta_range = np.linspace(-0.15, 0.15, points)
@@ -98,7 +110,7 @@ automate(1, 2)
 arnold_tongue(1, 2)
 automate(1, 1)
 arnold_tongue(1, 1)
-plt.savefig("1_2_3.png")
+#plt.savefig("1_2_3.png")
 plt.show()'''
 
 
