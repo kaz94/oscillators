@@ -232,44 +232,40 @@ def true_phases(protophases):
 
 
 def fourier_coeff(phi, dphi, order=10):
-    print(phi.shape)
-    N, nn = phi.shape
-    if N != dphi.shape[0]:
+    nn, N = phi.shape
+    if N != dphi.shape[1]:
         raise Exception("Not consistent number of oscillators")
-    if N > 2:
-        raise Exception("Number of oscillators is greater than 2")
+    if N > 3:
+        raise Exception("Number of oscillators is greater than 3")
 
     order1 = order + 1
     ncf = 2 * order
     ncf1 = ncf + 1
     ncf2 = ncf1 * ncf1  # number of coefficients in each dimension
 
-    # TODO: check if necessary
     phi = np.unwrap(phi, axis=0)
-
     # This matrix contains the coefficients
     # A[n + p, m + q, k + r]
     # for the linear system of equations to
     # obtain the coefficients Qcoef[n, m, k]
     A = np.zeros(([4 * order + 1] * N), dtype=np.complex)
-    print("A.shape: ", A.shape)
+    print(A.shape)
     nmk = list(range(-ncf, ncf1))
 
     for nmk_ in product(*([nmk, ] * N)):
         nmk_ = np.array(nmk_)
-        print("nmk_:",nmk_)
+
         idx1 = tuple(nmk_ + ncf)
         idx2 = tuple(-nmk_ + ncf)
 
-        print("A[0,0]:",A[0,0])
-        print("rhs:",nmk_ * phi)
-        return 0
         A[idx1] = np.mean(np.exp(1j * np.sum(nmk_ * phi, axis=1)))
         A[idx2] = np.conj(A[idx1])
 
     B = np.zeros((ncf1 ** N, N), dtype=np.complex)
     C = np.zeros((ncf1 ** N, ncf1 ** N), dtype=np.complex)
 
+    # TODO: poprawić bo
+    # dalej zadziała tylko dla 3 oscylatorów
     idx = 0
     rsq = list(range(-order, order1))
     for rsq_ in product(*([rsq, ] * N)):
@@ -289,11 +285,11 @@ def fourier_coeff(phi, dphi, order=10):
 
     coeff1 = np.dot(np.linalg.inv(C), B[:, 0])
     coeff2 = np.dot(np.linalg.inv(C), B[:, 1])
-    #coeff3 = np.dot(np.linalg.inv(C), B[:, 2])
+    coeff3 = np.dot(np.linalg.inv(C), B[:, 2])
 
     qcoeff1 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
     qcoeff2 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
-    #qcoeff3 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
+    qcoeff3 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
 
     for n in range(ncf1):
         for m in range(ncf1):
@@ -301,9 +297,9 @@ def fourier_coeff(phi, dphi, order=10):
                 idx = n * ncf2 + m * ncf1 + k
                 qcoeff1[n, m, k] = coeff1[idx]
                 qcoeff2[m, k, n] = coeff2[idx]
-                #qcoeff3[k, n, m] = coeff3[idx]
+                qcoeff3[k, n, m] = coeff3[idx]
 
-    return qcoeff1, qcoeff2#, qcoeff3
+    return qcoeff1, qcoeff2, qcoeff3
 
 
 def fourier_coefficients(p1, p2, dphi1, order=10):
@@ -319,7 +315,7 @@ def fourier_coefficients(p1, p2, dphi1, order=10):
             A[n + or2, m + or2] = np.mean(np.exp(1j * (n * p1 + m * p2)))
             A[-n + or2, -m + or2] = A[n + or2, m + or2].conjugate()
 
-    B = np.zeros([or21**2], dtype=np.complex)
+    B1 = np.zeros([or21**2], dtype=np.complex)
     C = np.zeros([or21**2, or21**2], dtype=np.complex)
 
     ind = 0
@@ -329,7 +325,7 @@ def fourier_coefficients(p1, p2, dphi1, order=10):
             i1 = i1_1 + m + N_F
             i4 = m + or2
             tmp = np.exp(-1j * (n * p1 + m * p2))
-            B[ind] = np.mean(dphi1 * tmp)
+            B1[ind] = np.mean(dphi1 * tmp)
             ind += 1
             for r in range(-N_F, N_F1):
                 i3 = (r + N_F) * or21 + N_F
@@ -337,7 +333,7 @@ def fourier_coefficients(p1, p2, dphi1, order=10):
                 for s in range(-N_F, N_F1):
                     C[i1, i3 + s] = A[i2, i4 - s]
 
-    qc1 = np.dot(np.linalg.inv(C.conjugate()), B)
+    qc1 = np.dot(np.linalg.inv(C.conjugate()), B1)
 
     return qc1
 
@@ -349,7 +345,8 @@ if __name__ == '__main__':
     phi = x[:, :N]
     dphi = x[:, N:]
 
-    qc1py = fourier_coefficients(phi[:, 0], phi[:, 1], dphi[:, 0])
-    print(qc1py.shape)
-    print(qc1py)
+    qc1py = fourier_coefficients(phi[:, 0], phi[:, 1], dphi[:, 0], order=1)
+    qc1py2 = fourier_coeff(phi, dphi, order=1)
+
+    print(qc1py2)
 
