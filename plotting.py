@@ -64,11 +64,15 @@ def plot_synchrograms(t, phases, couplings_gl):
     plot_params = {'figure.figsize': (10, 3*subplots)}
     plt.rcParams.update(plot_params)
     active_subplot = 0
-
     for i, coupl in enumerate(couplings_gl):
         osc_i_couplings = coupl[1]
         if len(osc_i_couplings) > 0:
-
+            plot_params = {'figure.figsize': (12, 10),
+                           'axes.labelsize': 'large',
+                           'axes.titlesize': 'large',
+                           'xtick.labelsize': 'large',
+                           'ytick.labelsize': 'large'}
+            plt.rcParams.update(plot_params)
             strength = osc_i_couplings[0][1]
             from_osc = osc_i_couplings[0][0]
 
@@ -81,15 +85,16 @@ def plot_synchrograms(t, phases, couplings_gl):
             active_subplot += 1
             plt.subplot(subplots, 1, active_subplot)
 
-            plt.scatter(t[peak_indexes], drive, label=' '.join(["osc", str(int(from_osc))]))
-            plt.plot(t, phases[int(from_osc)])
+            #plt.scatter(t[peak_indexes], drive, label=' '.join([" f=1.0"]))
+            #plt.plot(t, phases[int(from_osc)])
 
-            plt.scatter(t[peak_indexes], driven, label=' '.join(["osc", str(i)]), color="red")
-            plt.plot(t, phases[i])
+            plt.scatter(t[peak_indexes], driven, color="red")
+            #plt.plot(t, phases[i])
 
-            plt.title(' '.join(["Synchrogram, k=", str(strength)]))
+            plt.title(' '.join(["k=", str(strength), " delta=0.2"]))
+            plt.ylim([-4,3])
             plt.xlabel("t")
-            plt.ylabel("Phase")
+            plt.ylabel("$\phi$")
             plt.legend(prop={'size': 50 / len(couplings_gl)})
 
     plt.tight_layout(h_pad=1)
@@ -110,6 +115,7 @@ def arnold_tongue(N, M):
 
 
 def plot_map(k, delta, quantif, len_k, len_delta):
+    qqqq = quantif
     #plt.clf()
     k_diff=np.diff(k)
     delta_diff=np.diff(delta)
@@ -121,19 +127,27 @@ def plot_map(k, delta, quantif, len_k, len_delta):
     delta_axis = np.array(delta).reshape(len_k, len_delta)
     k_axis = np.array(k).reshape(len_delta, len_k)
     quantif = quantif[:-1, :-1]
-    levels = MaxNLocator(nbins=15).tick_values(quantif.min(), quantif.max())
+    levels = MaxNLocator(nbins=20).tick_values(quantif.min(), quantif.max())
     cmap = plt.get_cmap('PiYG')
 
     plt.contourf(delta_axis[:-1, :-1] + dx / 2.,
-                      k_axis[:-1, :-1] + dy / 2., quantif)#, levels=levels,cmap=cmap)
-    plt.colorbar()
+                      k_axis[:-1, :-1] + dy / 2., quantif, levels=levels,cmap=cmap)
     plt.title('Mapa synchronizacji')
-    plt.xlabel("delta")
-    plt.ylabel("siła sprzezenia k")
+    plt.xlabel("$\Delta$")
+    plt.ylabel("k")
     plt.tight_layout()
 
     #plt.savefig("coherence.png")
     #plt.show(block=False)
+
+    '''fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    ax.plot_trisurf(k, delta, qqqq, cmap=cm.jet)
+    ax.set_xlabel('k')
+    ax.set_ylabel('delta')
+    ax.set_zlabel('synchronization')
+    plt.savefig("coherence.png")
+    plt.show(block=False)'''
 
 
 def plot_hist_synchronization(k_range, freq_ratio, p, quantif):

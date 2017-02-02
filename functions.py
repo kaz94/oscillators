@@ -5,6 +5,9 @@ from scipy.signal import argrelmax
 from ReadAdjacencyMatrix import read_file
 from scipy.optimize import curve_fit
 from itertools import product
+from collections import Iterable
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 
 def load_params():
@@ -52,7 +55,7 @@ def vector_field(w, t, p):
     return equasions
 
 
-def get_phases(wsol, n):
+def get_phases(t, wsol, n, cut):
     phases = []
     for i in range(0, n):
         analytic_signal = hilbert(wsol[:, 2 * i])
@@ -60,8 +63,21 @@ def get_phases(wsol, n):
         # instantaneous_phase = np.unwrap(np.angle(analytic_signal))
         # instantaneous_frequency = np.diff(instantaneous_phase) / (2.0 * np.pi) * fs
         phase = np.angle(analytic_signal)
+        '''plt.plot(phase)
+        plt.savefig(str(i)+"phase.png")
+        plt.show()'''
         phases.append(phase)
-    return phases
+
+
+    # cut start and end points with error due to hilbert transform
+    start = cut
+    end = len(t) - cut
+    t = t[start:end]
+    phases = np.array(phases)
+    phases = phases[:, start:end]
+    wsol = wsol[start:end, :]
+
+    return t, wsol, phases
 
 
 def coherence(freq1, n, freq2, m):
@@ -178,10 +194,14 @@ def poincare_protophases(t,wsol, phases, p):
     plt.ylabel("y")
     plt.scatter(t[poincare_y_idx], y[poincare_y_idx])
     plt.show()
-    plt.scatter(x[poincare_points_idx], y[poincare_points_idx], color="r")
-    plt.plot(x, y)
-    plt.xlabel("x")
-    plt.ylabel("y")
+
+    plt.plot(x, y, label="trajektoria")
+    plt.scatter(x[poincare_points_idx], y[poincare_points_idx], label="punkty Poincare", color="r")
+    plt.xlabel("x", size="large")
+    plt.ylabel("y", size="large")
+    plt.legend()
+    plt.title("Przekrój Poincare", size="large")
+    plt.savefig("poincare.png")
     plt.show()'''
 
     L = 0.
@@ -199,36 +219,96 @@ def poincare_protophases(t,wsol, phases, p):
         L_i += delta_L_i
         L = L[-1]
 
+    poincare_protoph_wra = np.array(poincare_protoph)%(2.*np.pi) - np.pi
+    true_ph_poincare, noth = true_phases(np.array(poincare_protoph))
+    true_ph_hilbert, noth = true_phases(get_phases(wsol,1)[0])
+
+    omega_0 = []
+    for ph in phases:
+        omega_0.append(natural_freq(t, ph))
+
+    idx_poincare = range(poincare_points_idx[0], poincare_points_idx[-1])
+    t_poincare = t[idx_poincare]
+    plt.plot(t, np.unwrap(phases[0])-omega_0[0]*(t-t[0]), label="protofaza - Hilbert")
+    plt.plot(t_poincare, poincare_protoph-omega_0[0]*(t_poincare-t_poincare[0]), label="protofaza - Poincare")
+    plt.plot(t, np.unwrap(true_ph_hilbert)[0]-omega_0[0]*(t-t[0]), label="faza - Hilbert")
+    plt.plot(t_poincare, np.unwrap(true_ph_poincare[0])-omega_0[0]*(t_poincare-t_poincare[0]), label="faza Poincare")
+
     '''plt.plot(t, phases[0], linestyle="--", label="hilbert")
-    poincare_protoph = np.array(poincare_protoph)%(2.*np.pi) - np.pi
-
-    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], poincare_protoph, linestyle="-.", color="r", label="poincare")
-
-    true_ph_poincare = true_phases(poincare_protoph)
-    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], true_ph_poincare, color="g", label="poincare->true")
-    true_ph_hilbert = true_phases(get_phases(wsol,1)[0])
-    plt.plot(t, true_ph_hilbert, color="black", label="hilbert->true")
+    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], poincare_protoph_wra, linestyle="-.", color="r", label="poincare")
+    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], true_ph_poincare[0], color="g", label="poincare->true")
+    plt.plot(t, true_ph_hilbert[0], color="black", label="hilbert->true")'''
     plt.legend()
     plt.xlabel("t")
     plt.ylabel("proto(phase)")
-    #plt.savefig("hilbert_poincare_k0.05.png")
-    plt.show()'''
+    plt.show()
 
 
 
-    return poincare_protoph
+    return poincare_protoph_wra
+
+def protophase2phase(theta, order=10):
+    ph = theta.astype(np.complex)
+    for n in range(-order, order + 1):
+        if n == 0:
+            continue
+        Sn = np.mean(np.exp(-1j * n * theta), axis=0)
+        ph += (Sn / (1j * n)) * (np.exp(1j * n * theta) - 1)
+
+    return np.real(ph)
+def true_phases_ZLE(protophases):
+    phases = []
+    if not isinstance(protophases[0], Iterable):
+        protophases = np.array([protophases])
+    for protoph in protophases:
+        protoph = np.array(protoph)
+        N = len(protoph)
+        n_range = np.arange(-10,10)
+        n_range = np.delete(n_range, 10) # remove 0
+        S =  1./N *np.array([ np.sum(np.exp(-1j*n*protoph)) for n in n_range])
+        phases.append(protoph + \
+                 np.array([np.sum(S/(1j*n_range) * np.exp(1j*n_range*p-1.)) for p in protoph]))
 
 
-def true_phases(protophases):
-    protophases = np.array(protophases)
-    N = len(protophases)
-    n_range = np.arange(-10,10)
-    n_range = np.delete(n_range, 10) # remove 0
-    S =  1./N *np.array([ np.sum(np.exp(-1j*n*protophases)) for n in n_range])
-    phases = protophases + \
-             np.array([np.sum(S/(1j*n_range) * np.exp(1j*n_range*p-1.)) for p in protophases])
+    return np.array(phases).real
 
-    return phases.real
+
+def true_phases(theta):
+    phi = []
+    ph_diff = []
+    if len(theta.shape) == 1:
+        theta = np.array([theta])
+    for theta_ in theta:
+        theta_ = np.array(theta_)
+        nfft = 10
+        Spl = np.zeros(nfft, dtype=complex)
+        Hl = np.zeros(nfft)
+
+        tmp = np.diff(np.mod(theta_, 2 * np.pi))
+        IN = [i for i, j in enumerate(tmp) if j < 0]  # poprawka na pełne okresy
+        npt = len(theta_[IN[0]: IN[-1]])
+
+        S = 0
+        c = float(npt + 2) / float(npt)
+        for k in range(nfft):
+            Spl[k] = np.sum(np.exp(-1j * (k+1) * theta_[IN[0]: IN[-1]+1])) / (npt+1)
+            S = S + Spl[k] * Spl[k].conjugate() - 1. / float(npt+1)
+            Hl[k] = np.real((k+1) / (npt+1) - c * S)
+        indopt = np.argmin(Hl)
+
+        phi_ = np.copy(theta_)
+        for k in range(indopt+1):
+            phi_ = phi_ + 2. * np.imag(Spl[k] * (np.exp(1j * (k+1) * theta_)-1) / (k+1))
+        phi.append(phi_)
+        ph_diff.append(np.append(np.diff(phi_), 0))
+
+    return np.array(phi), np.array(ph_diff)
+
+
+def natural_freq(time, proto_phases):
+    proto_phases = np.unwrap(proto_phases)
+    freq = (proto_phases[-1] - proto_phases[0])/(time[-1] - time[0])
+    return freq # omega_0
 
 
 def fourier_coeff(phi, dphi, order=10):
@@ -249,7 +329,6 @@ def fourier_coeff(phi, dphi, order=10):
     # for the linear system of equations to
     # obtain the coefficients Qcoef[n, m, k]
     A = np.zeros(([4 * order + 1] * N), dtype=np.complex)
-    print(A.shape)
     nmk = list(range(-ncf, ncf1))
 
     for nmk_ in product(*([nmk, ] * N)):
@@ -264,8 +343,6 @@ def fourier_coeff(phi, dphi, order=10):
     B = np.zeros((ncf1 ** N, N), dtype=np.complex)
     C = np.zeros((ncf1 ** N, ncf1 ** N), dtype=np.complex)
 
-    # TODO: poprawić bo
-    # dalej zadziała tylko dla 3 oscylatorów
     idx = 0
     rsq = list(range(-order, order1))
     for rsq_ in product(*([rsq, ] * N)):
@@ -277,31 +354,60 @@ def fourier_coeff(phi, dphi, order=10):
         for nmk_ in product(*([rsq, ] * N)):
             nmk_ = np.array(nmk_)
             in_idx1 = (rsq_ + order)
-            in_idx1 = in_idx1[0] * ncf2 + in_idx1[1] * ncf1 + in_idx1[2]
             in_idx2 = (nmk_ + order)
-            in_idx2 = in_idx2[0] * ncf2 + in_idx2[1] * ncf1 + in_idx2[2]
+            if N == 2:
+                in_idx1 = in_idx1[0] * ncf1 + in_idx1[1] #* ncf1 + in_idx1[2]
+                in_idx2 = in_idx2[0] * ncf1 + in_idx2[1] #* ncf1 + in_idx2[2]
+            if N == 3:
+                in_idx1 = in_idx1[0] * ncf2 + in_idx1[1] * ncf1 + in_idx1[2]
+                in_idx2 = in_idx2[0] * ncf2 + in_idx2[1] * ncf1 + in_idx2[2]
             out_idx = tuple((nmk_ - rsq_) + ncf)
             C[in_idx1, in_idx2] = A[out_idx]
 
-    coeff1 = np.dot(np.linalg.inv(C), B[:, 0])
-    coeff2 = np.dot(np.linalg.inv(C), B[:, 1])
-    coeff3 = np.dot(np.linalg.inv(C), B[:, 2])
-
-    qcoeff1 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
-    qcoeff2 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
-    qcoeff3 = np.zeros((ncf1, ncf1, ncf1), dtype=np.complex)
-
+    coeff = []
+    qcoeff = []
+    for i in range(N):
+        coeff.append(np.dot(np.linalg.inv(C), B[:, i]))
+        qcoeff.append(np.zeros((ncf1,)*N, dtype=np.complex))
     for n in range(ncf1):
         for m in range(ncf1):
-            for k in range(ncf1):
-                idx = n * ncf2 + m * ncf1 + k
-                qcoeff1[n, m, k] = coeff1[idx]
-                qcoeff2[m, k, n] = coeff2[idx]
-                qcoeff3[k, n, m] = coeff3[idx]
+            if N == 3:
+                for k in range(ncf1):
+                    idx = n * ncf2 + m * ncf1 + k
+                    for ii, qc in enumerate(qcoeff):
+                        qc[n, m, k] = coeff[ii][idx]
+            elif N == 2:
+                idx = n * ncf1 + m
+                for ii, qc in enumerate(qcoeff):
+                    qc[n, m] = coeff[ii][idx]
 
-    return qcoeff1, qcoeff2, qcoeff3
+    ngrid = 50
+    Y, X = np.meshgrid(2 * np.pi * (np.arange(0, ngrid) - 1) / (ngrid - 1), 2 * np.pi * (np.arange(0, ngrid) - 1) / (ngrid - 1))
+    q = np.zeros([N, ngrid, ngrid], dtype=complex)
+    for n in range(-order, order+1):
+        for m in range(-order, order+1):
+            tmp = np.exp(1j * n * X + 1j * m * Y)
+            for i_q, q_ in enumerate(q):
+                # TODO sumować ten wymiar czy dodać kolejny też do q?
+                if isinstance(qcoeff[i_q][n + order, m + order], Iterable):
+                    for qcoeff_n in qcoeff[i_q][n + order, m + order]:
+                        q[i_q] = q[i_q] + qcoeff_n * tmp
+                else:
+                    q[i_q] = q[i_q] + qcoeff[i_q][n + order, m + order] * tmp
+    q = np.real(q)
+
+    fig = plt.figure()
+    for ii, q_ in enumerate(q):
+        ax = fig.add_subplot(1,len(q),ii+1,projection='3d')
+        surf = ax.plot_surface(X, Y, q_,cmap=cm.coolwarm)
+        ax.set_zlabel("q")
+        fig.colorbar(surf)
+    plt.show()
+
+    return qcoeff, q
 
 
+'''
 def fourier_coefficients(p1, p2, dphi1, order=10):
     N_F = order
     N_F1 = N_F + 1
@@ -336,17 +442,56 @@ def fourier_coefficients(p1, p2, dphi1, order=10):
     qc1 = np.dot(np.linalg.inv(C.conjugate()), B1)
 
     return qc1
+'''
+
+
+def coeff_norm(qcoeff):
+    for qc in qcoeff:
+        S = np.array(qc).shape
+        N = int((S[0] - 1.) / 2.)
+        omega = np.real(qc[N, N])
+        qc[N, N] = 0.
+        nrmq = np.sqrt(np.trapz(np.trapz(np.abs(qcoeff) ** 2.)))
+
+    return nrmq, omega
 
 
 
 if __name__ == '__main__':
     x = np.loadtxt("phi3vdp0.5K.txt")
     N = int(x.shape[1] / 2)
-    phi = x[:, :N]
-    dphi = x[:, N:]
+    '''phi = x[:, :N]
+    dphi = x[:, N:]'''
 
-    qc1py = fourier_coefficients(phi[:, 0], phi[:, 1], dphi[:, 0], order=1)
-    qc1py2 = fourier_coeff(phi, dphi, order=1)
+    '''phi = x[:, :2]
+    dphi = x[:, 3:5]
 
-    print(qc1py2)
+    #qc1py = fourier_coefficients(phi[:, 0], phi[:, 1], dphi[:, 0], order=1)
+    qc1py, q = fourier_coeff(phi, dphi, order=10)
+
+    norm, omega = coeff_norm(qc1py)'''
+
+    #print("qcoeff: ", qc1py)
+    #print("q: ", q)
+
+
+
+
+    # porownanie trzech funkcji liczacych protof->faza
+    '''phi = x[:, 0]
+    phase1 = protophase2phase(phi)
+    phase2 = true_phases_ZLE(phi)
+    phase3, dph3 = true_phases(phi)
+
+    print("1:",phase1, phase1.shape)
+    print("2:",phase2[0], phase2.shape)
+    print("3:",phase3[0], phase3.shape)
+
+    nnn=300
+    plt.plot(phase1[:nnn], color="r", label="prom")
+    plt.plot(phase2[0][:nnn]+7, color="g", label="moje")
+    plt.plot(phase3[0][:nnn]+14, color="b", label="rosenblum")
+    plt.legend()
+    plt.show()'''
+
 
