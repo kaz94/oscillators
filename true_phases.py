@@ -191,7 +191,7 @@ def natural_freq(time, proto_phases):
     freq = (proto_phases[-1] - proto_phases[0])/(time[-1] - time[0])
     return freq # omega_0
 
-
+# Ta funkcja działa OK!!!!!
 def fourier_coeff(phi, dphi, order=10):
     nn, N = phi.shape
     if N != dphi.shape[1]:
@@ -246,25 +246,15 @@ def fourier_coeff(phi, dphi, order=10):
             out_idx = tuple((nmk_ - rsq_) + ncf)
             C[in_idx1, in_idx2] = A[out_idx]
 
-    #print(np.transpose(np.conjugate(C)))
-    C1 = C
-    print("C:\n",C1)
-    print("B:\n",B)
-    temp = np.dot(np.linalg.inv(C1), B)
-    print("qc1",temp)
     coeff = []
     qcoeff = []
 
-
-    ########print(np.real(np.dot(np.linalg.inv(C), B[:, 0])))
 
 
     for i in range(N):
         coeff.append(np.dot(np.linalg.inv(C), B[:, i]))
         qcoeff.append(np.zeros((ncf1,)*N, dtype=np.complex))
     coeff = np.array(coeff)
-    #print(coeff.shape)
-    #print(np.real(coeff))
     for n in range(ncf1):
         for m in range(ncf1):
             if N == 3:
@@ -276,7 +266,6 @@ def fourier_coeff(phi, dphi, order=10):
                 idx = n * ncf1 + m
                 for ii, qc in enumerate(qcoeff):
                     qc[n, m] = coeff[ii][idx]
-
     return np.array(qcoeff)
 
 
@@ -519,19 +508,16 @@ if __name__ == '__main__':
 
     x = np.loadtxt("phi3vdp0.5K.txt")
     N = int(x.shape[1] / 2)
-    phi = x[:, :2]
-    dphi = x[:, 3:5]
+    phi = x[:, :N]
+    dphi = x[:, N:]
 
-    qc1py = fourier_coeff(phi,dphi, 1)
-    #print(qc1py)
-    qc1mat = np.loadtxt("qc1_mat.txt")
-    #print(np.allclose(np.abs(qc1py), qc1mat))
+    qc1py = fourier_coeff(phi,dphi, 5) # OK!!!
+    print(qc1py)
 
     '''a = np.array([[1, 2],[9,4]])
     b = np.array([1,2])
     c=np.dot(np.linalg.inv(a), b)
     print(c)'''
-
 
 
 
