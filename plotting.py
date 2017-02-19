@@ -133,7 +133,7 @@ def plot_map(k, delta, quantif, len_k, len_delta):
     plt.contourf(delta_axis[:-1, :-1] + dx / 2.,
                       k_axis[:-1, :-1] + dy / 2., quantif, levels=levels,cmap=cmap)
     plt.title('Mapa synchronizacji')
-    plt.xlabel("$\Delta$")
+    plt.xlabel("f")#("$\Delta$")
     plt.ylabel("k")
     plt.tight_layout()
 

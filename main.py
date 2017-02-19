@@ -1,9 +1,7 @@
-from matplotlib import pyplot as plt
 from scipy.integrate import odeint
-from functions import load_params, vector_field, get_phases, synchronization, \
-    poincare_protophases, true_phases, fourier_coeff, natural_freq
-from plotting import plot_synchrograms,timeSeries, arnold_tongue
-import numpy as np
+from functions import *
+from plotting import *
+from true_phases import *
 
 # ODE solver parameters
 abserr = 1.0e-8
@@ -37,11 +35,12 @@ def dynamics(plot, n, w0, p, couplings_gl, N=1, M=1, save=False):
                    'ytick.labelsize': 'x-small'}
     plt.rcParams.update(plot_params)
 
-    t, wsol, phases = get_phases(t, wsol, n, cut=point_dens * 10)
+    t, wsol, pphases = get_pphases(t, wsol, cut=point_dens * 10)
 
     if save:
         t = np.transpose([t])
         np.savetxt('signal.txt', np.hstack((t,wsol)), fmt='%.18g', delimiter=' ', newline='\n')
+
 
 
     '''from estimate_phase import out_remv
@@ -89,7 +88,7 @@ def dynamics(plot, n, w0, p, couplings_gl, N=1, M=1, save=False):
     #qcoeff1, qcoeff2 = fourier_coeff(phases, ph_diff)
 
     if plot:
-        timeSeries(t, wsol, n, p, phases)
+        timeSeries(t, wsol, n, p, pphases)
 
     # synchrogramy
     any_coupling = False
@@ -98,8 +97,8 @@ def dynamics(plot, n, w0, p, couplings_gl, N=1, M=1, save=False):
             any_coupling = True
     if any_coupling:
         if plot:
-            plot_synchrograms(t, phases, couplings_gl)
-        qq = synchronization(phases, couplings_gl, N, M)
+            plot_synchrograms(t, pphases, couplings_gl)
+        qq = synchronization(pphases, couplings_gl, N, M)
         return qq
 
 
@@ -157,7 +156,7 @@ if __name__ == '__main__':
     plt.savefig("123.png")
     plt.show()'''
 
-    synchrograms_from_file()
+    #synchrograms_from_file()
 
 
 
