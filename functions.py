@@ -157,8 +157,6 @@ def fit_freq(t, phases, p):
     return popt
 
 
-
-
 if __name__ == '__main__':
     x = np.loadtxt("phi3vdp0.5K.txt")
     N = int(x.shape[1] / 2)
@@ -175,9 +173,6 @@ if __name__ == '__main__':
 
     #print("qcoeff: ", qc1py)
     #print("q: ", q)
-
-
-
 
     # porownanie trzech funkcji liczacych protof->faza
     '''phi = x[:, 0]

@@ -5,6 +5,7 @@ from matplotlib.ticker import MaxNLocator
 from scipy.signal import argrelmax
 import numpy as np
 
+
 def timeSeries(t, wsol, n, p, phases):
     fig, axes = plt.subplots(nrows=n, ncols=3)
     for i in range(0, n):

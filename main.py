@@ -156,7 +156,7 @@ if __name__ == '__main__':
     plt.savefig("123.png")
     plt.show()'''
 
-    #synchrograms_from_file()
+    synchrograms_from_file()
 
 
 
