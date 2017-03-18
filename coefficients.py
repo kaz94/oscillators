@@ -62,6 +62,14 @@ def fourier_coeff(phi, dphi, order=10):
     print("wyznacznik:", np.linalg.det(C))
     print("C vs C_mat:", np.allclose(np.real(C), C_mat))
 
+    test=np.isclose(np.linalg.eigvals(C),0)
+    print(test[test==True])
+
+    print("wyznacznik A:", np.linalg.det(A))
+    testA=np.isclose(np.linalg.eigvals(A),0)
+    print(testA[testA==True])
+
+
     coeff = []
     coeff2=[]
     qcoeff = []
@@ -155,8 +163,8 @@ if __name__ == '__main__':
     cf_mat2 = np.loadtxt("matlab/coeff_real_mat2.txt")
     print("coeff mat=py (moje dane): ", np.allclose(cf_mat2, np.real(np.transpose(coeff2))))
     #print(np.real(np.transpose(coeff2)))
-    print(np.transpose(coeff_lstsq))
-    print(np.transpose(coeff2))
+    #print(np.transpose(coeff_lstsq))
+    #print(np.transpose(coeff2))
     print(np.allclose(cf_mat2, np.real(np.transpose(coeff_lstsq)), rtol=0.5))
 
 

@@ -210,5 +210,5 @@ if __name__ == '__main__':
 
     ph_mat = np.loadtxt('matlab/phi_mat_moje.txt')
     ph_mat = np.delete(ph_mat, out, axis=0)
-    print(np.allclose(ph, ph_mat, atol=0.05))
+    print(np.allclose(ph, ph_mat, rtol=0.05))
 
