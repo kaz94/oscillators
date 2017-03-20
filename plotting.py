@@ -90,12 +90,11 @@ def plot_synchrograms(t, phases, couplings_gl):
 
             #plt.scatter(t[peak_indexes], drive, label=' '.join([" f=1.0"]))
             #plt.plot(t, phases[int(from_osc)])
-
             plt.scatter(t[peak_indexes], driven, color="red")
             #plt.plot(t, phases[i])
 
             plt.title(' '.join(["k=", str(strength), " delta=0.2"]))
-            plt.ylim([-4,3])
+            plt.ylim([0,6.5])
             plt.xlabel("t")
             plt.ylabel("$\phi$")
             plt.legend(prop={'size': 50 / len(couplings_gl)})
