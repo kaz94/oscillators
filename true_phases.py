@@ -204,7 +204,7 @@ def natural_freq(time, proto_phases):
 
 
 if __name__ == '__main__':
-    data = np.loadtxt('signal3.txt')
+    data = np.loadtxt('signal2.txt')
     t = data[:, 0]
     wsol = data[:, 1:]
 
@@ -232,22 +232,23 @@ if __name__ == '__main__':
 
 
     phi = protophase2phase(pphi, 100)
+    Dphi, phi = phi_dot(phi, dt)
+
     # # debug only
     # phi_unw = np.unwrap(phi, axis=0)
     # om = (phi_unw[-1, :] - phi_unw[0, :])/t[-1]
     # p.plot(phi_unw - (t * om.reshape(om.size, 1)).T)
     # p.plot(pphi_unw - (t * om.reshape(om.size, 1)).T)
     # p.show()
-
     # p.plot(phi)
     # p.show()
-    Dphi, phi = phi_dot(phi, dt)
+
     # t, wsol, phi, Dphi, out = true_phases(t, wsol, pphases)
     # phi, Dphi = phi.T, Dphi.T
     p.plot(Dphi)
 
     from coefficients import fourier_coeff
-    # coeff, qcoeff, coeff2 = fourier_coeff(phi, Dphi, 2)
+    coeff, qcoeff, coeff2 = fourier_coeff(phi, Dphi, 2)
 
     p.show()
 
