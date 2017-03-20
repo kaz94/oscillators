@@ -1,8 +1,7 @@
 from functions import *
-
+from scipy.signal import savgol_filter, savgol_coeffs
 
 def get_pphases(t, wsol, cut):
-
     wsol1=wsol[:, 0::2]
     analytic_signal = hilbert(np.transpose(wsol1))
 
@@ -107,6 +106,7 @@ def true_phases_moje(protophases):
 def true_phases(t, x, theta):
     phi = []
     ph_diff = []
+
     if len(theta.shape) == 1:
         theta = np.array([theta])
     for theta_ in theta:
@@ -130,12 +130,28 @@ def true_phases(t, x, theta):
         phi_ = np.copy(theta_)
         for k in range(indopt+1):
             phi_ = phi_ + 2. * np.imag(Spl[k] * (np.exp(1j * (k+1) * theta_)-1) / (k+1))
+
         phi.append(phi_)
+        print(phi)
+        phi_ = np.unwrap(phi_)
         ph_diff.append(np.append(np.diff(phi_) / np.diff(t), 0))
 
     t, x, phi, ph_dif, out = out_remv(t, x, np.array(phi).T, np.array(ph_diff).T)
 
     return t, x, phi, ph_dif, out
+
+    
+def phi_dot(phi, dt):
+    norder = 4  # order of the fitting polynomial
+    sl = 4  # window semi-length
+    wl = 2 * sl + 1  # window length
+    phi = np.unwrap(phi, axis=0)
+    phi_dot = savgol_filter(phi, wl, norder, deriv=1, delta=dt, axis=0)
+    phi_dot = phi_dot[sl:-sl, :]
+    phi = phi[sl:-sl, :]
+
+    return phi_dot, phi
+
 
 
 def protophase2phase(theta, order=10):
@@ -188,7 +204,7 @@ def natural_freq(time, proto_phases):
 
 
 if __name__ == '__main__':
-    data = np.loadtxt('signal.txt')
+    data = np.loadtxt('signal3.txt')
     t = data[:, 0]
     wsol = data[:, 1:]
 
@@ -198,17 +214,44 @@ if __name__ == '__main__':
     t, wsol, pphases = get_pphases(t, wsol, cut=point_dens * 10)
 
     # true phases reconstructed
-    t, wsol, ph, dph, out = true_phases(t, wsol, pphases)
+    # t, wsol, ph, dph, out = true_phases(t, wsol, pphases)
 
 
-    pphases = np.transpose(pphases)
-    np.savetxt('pphases.txt', pphases, fmt='%.18g', #np.transpose([t]),
-               delimiter=' ', newline='\n')
-    ph, dph = np.transpose(ph), np.transpose(dph)
-    np.savetxt('phases.txt', np.hstack((ph, dph)), fmt='%.18g', #np.transpose([t]),
-               delimiter=' ', newline='\n')
+    # pphases = np.transpose(pphases)
+    # np.savetxt('pphases.txt', pphases, fmt='%.18g', #np.transpose([t]),
+    #            delimiter=' ', newline='\n')
+    # ph, dph = np.transpose(ph), np.transpose(dph)
+    # np.savetxt('phases.txt', np.hstack((ph, dph)), fmt='%.18g', #np.transpose([t]),
+    #            delimiter=' ', newline='\n')
 
-    ph_mat = np.loadtxt('matlab/phi_mat_moje.txt')
-    ph_mat = np.delete(ph_mat, out, axis=0)
-    print(np.allclose(ph, ph_mat, atol=0.05))
+    import pylab as p
+    t = t - t[0]
+    dt = t[1] - t[0]
+    pphi = pphases.T
+    pphi_unw = np.unwrap(pphi, axis=0)
+
+
+    phi = protophase2phase(pphi, 100)
+    # # debug only
+    # phi_unw = np.unwrap(phi, axis=0)
+    # om = (phi_unw[-1, :] - phi_unw[0, :])/t[-1]
+    # p.plot(phi_unw - (t * om.reshape(om.size, 1)).T)
+    # p.plot(pphi_unw - (t * om.reshape(om.size, 1)).T)
+    # p.show()
+
+    # p.plot(phi)
+    # p.show()
+    Dphi, phi = phi_dot(phi, dt)
+    # t, wsol, phi, Dphi, out = true_phases(t, wsol, pphases)
+    # phi, Dphi = phi.T, Dphi.T
+    p.plot(Dphi)
+
+    from coefficients import fourier_coeff
+    # coeff, qcoeff, coeff2 = fourier_coeff(phi, Dphi, 2)
+
+    p.show()
+
+    # ph_mat = np.loadtxt('matlab/phi_mat_moje.txt')
+    # ph_mat = np.delete(ph_mat, out, axis=0)
+    # print(np.allclose(ph, ph_mat, atol=0.05))
 

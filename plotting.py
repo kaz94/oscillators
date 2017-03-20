@@ -5,6 +5,8 @@ from matplotlib.ticker import MaxNLocator
 from scipy.signal import argrelmax
 import numpy as np
 
+import os
+_curr_dir = os.path.dirname(os.path.abspath(__file__))
 
 def timeSeries(t, wsol, n, p, phases):
     fig, axes = plt.subplots(nrows=n, ncols=3)
@@ -43,7 +45,7 @@ def timeSeries(t, wsol, n, p, phases):
         plt.legend(prop={'size': 30 / n})
 
     fig.tight_layout()
-    plt.savefig("/home/kasia/Pulpit/inzynierka/wykres")
+    plt.savefig(_curr_dir+"/wykres")
     plt.show()
 '''
     conn_no_dupl = connections.copy()
