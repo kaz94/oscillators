@@ -1,45 +1,50 @@
 from scipy.integrate import odeint
-from functions import *
 from plotting import *
-from true_phases import *
+from functions import *
+from coupling_analysis import get_pphases
 
 # ODE solver parameters
 abserr = 1.0e-8
 relerr = 1.0e-6
-stoptime = 305.0-1.
-point_dens = 400 # points per time unit
+stoptime = 5000
+point_dens = 40 # points per time unit
 numpoints = int(point_dens * stoptime)
+filename = 'macierz.txt'
 
 
 def synchrograms_from_file():
-    w0, p, couplings_gl = load_params() # load params from file
+    w0, p, couplings_gl = load_params(file='IO/'+filename) # load params from file
     n = int(len(w0)/2)
-    q = dynamics(True, n, w0, p, couplings_gl, N=1, M=1, save=True)
+    q = dynamics(n, w0, p, couplings_gl, N=1, M=1, plot=True, save=True)
     print("synchro:", q)
 
 
-def dynamics(plot, n, w0, p, couplings_gl, N=1, M=1, save=False):
+def dynamics(n, w0, p, couplings_gl, N=1, M=1, plot=True, save=False):
     t = np.array([stoptime * float(i) / (numpoints - 1) for i in range(numpoints)])
+    #print(t[1] - t[0])
+    print("************")
     # Call the ODE solver.
-    wsol = odeint(vector_field, w0, t, args=(p,),
-                  atol=abserr, rtol=relerr)
+    wsol, dict = odeint(vector_field, w0, t, args=(p,),
+                  atol=abserr, rtol=relerr, full_output=True)
+    ttt=np.round(dict['hu'], 3)
+    #print(np.round(list(set(ttt)), 3))
 
     # cut unstable points
     t = t[point_dens * 221:]
     wsol = wsol[point_dens * 221:, :]
 
     plot_params = {'figure.figsize': (12, 10),
-                   'axes.labelsize': 'x-small',
-                   'axes.titlesize': 'x-small',
-                   'xtick.labelsize': 'x-small',
-                   'ytick.labelsize': 'x-small'}
+                   'axes.labelsize': 'medium',
+                   'axes.titlesize': 'medium',
+                   'xtick.labelsize': 'xx-small',
+                   'ytick.labelsize': 'xx-small'}
     plt.rcParams.update(plot_params)
 
     t, wsol, pphases = get_pphases(t, wsol, cut=point_dens * 10)
 
     if save:
         t = np.transpose([t])
-        np.savetxt('signal.txt', np.hstack((t,wsol)), fmt='%.18g', delimiter=' ', newline='\n')
+        np.savetxt('IO/signal.txt', np.hstack((t,wsol)), fmt='%.18g', delimiter=' ', newline='\n')
 
 
 
@@ -102,8 +107,8 @@ def dynamics(plot, n, w0, p, couplings_gl, N=1, M=1, save=False):
         return qq
 
 
-def automate(N, M):
-    w0, p, couplings_gl = load_params()
+def automate(N, M, file='IO/'+filename):
+    w0, p, couplings_gl = load_params(file)
     '''couplings_gl = []
     #     x,   y
     w0 = [0.1, 0.1,
@@ -132,7 +137,7 @@ def automate(N, M):
             for delta in delta_range:
                 # freq = 0.2*sqrt(f)
                 p[1][4] = M*base_freq + delta
-                qq = dynamics(False, n, w0, p, couplings_gl, N, M)
+                qq = dynamics(n, w0, p, couplings_gl, N, M, plot=False)
                 quantif += qq
                 print(k, p[1][4], qq)
                 f.write(" ".join(map(str, [k, p[1][4], *qq])) + "\n")
@@ -140,6 +145,8 @@ def automate(N, M):
                 ii += 1
 
 if __name__ == '__main__':
+
+    synchrograms_from_file()
     '''automate(1, 3)
     automate(1, 2)
     automate(1, 1)
@@ -153,10 +160,9 @@ if __name__ == '__main__':
     arnold_tongue(1, 2)
     arnold_tongue(1, 1)
     plt.colorbar()
-    plt.savefig("123.png")
+    plt.savefig("IO/123arnold.png")
     plt.show()'''
 
-    synchrograms_from_file()
 
 
 

@@ -83,9 +83,12 @@ if nargin == 3;
     meth = 1;                         % default method =1: partial norm 
     thresh = 2;                       % defining default value thresh=2; 
 end;
-N = size(Qcoef1); N = (N(1)-1)/2;
+N = size(Qcoef1); 
+N = (N(1)-1)/2;
 COUP = zeros(3,3);
 NORM = zeros(1,3);
+
+
 
 OMEGA(1) = abs( Qcoef1(N+1,N+1,N+1)); Qcoef1(N+1,N+1,N+1)=0; % extracting autonomous frequencies
 OMEGA(2) = abs( Qcoef2(N+1,N+1,N+1)); Qcoef2(N+1,N+1,N+1)=0;
@@ -136,6 +139,7 @@ C123=0;
 PART12=0;
 PART13=0;
 TOT=0;
+
 for n = 1 : or21; % sorting coefficients
     for m = 1 : or21; 
         Q12(n, m) = Q(n,m,or1);

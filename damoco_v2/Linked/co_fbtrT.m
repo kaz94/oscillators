@@ -32,6 +32,7 @@ for k=1:nfft        % computing Fourier coefficients
 end
 [~,indopt]=min(Hl);
 
+
 phi=theta;     % Transformation theta --> phi
 if nargout==3  % sigma is computed along with the transformation
   if nargin < 2, ngrid=50; end 

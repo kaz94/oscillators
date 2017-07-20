@@ -1,51 +1,64 @@
+#!/usr/bin/env python
+# coding: utf-8
 from matplotlib import pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.ticker import MaxNLocator
 from scipy.signal import argrelmax
 import numpy as np
-
+from textwrap import wrap
 import os
+from matplotlib.font_manager import FontProperties
+
 _curr_dir = os.path.dirname(os.path.abspath(__file__))
 
+font = FontProperties('DejaVu Sans')
+font2 = {'fontsize'   : 9}
+
 def timeSeries(t, wsol, n, p, phases):
+
+    plot_params = {'figure.figsize': (10,n*3)}
+    plt.rcParams.update(plot_params)
     fig, axes = plt.subplots(nrows=n, ncols=3)
     for i in range(0, n):
         plt.subplot(n, 3, 3 * i + 1)
-        title = ["Osc", i, "alfa=", p[i][0], "mi=", p[i][1], "d=", p[i][2], "e=", p[i][3], "f=", p[i][4], "Coupled to:"]
+        title = ["Osc", i, r"$, \alpha=$", p[i][0], r"$, \mu=$", p[i][1], ", d=", p[i][2], ", e=", p[i][3], ", f=", p[i][4], " Pobudzenie od: "]
         if len(p[i]) > 5:
             coupl = list(zip(p[i][5::2], p[i][6::2]))
             # connections.append((i, int(p[i][5])))
             for c in coupl:
                 title.append("osc")
                 title.append(int(c[0]))
-                title.append("k:")
+                title.append(", k:")
                 title.append(c[1])
-        plt.title(' '.join(str(t) for t in title))
-        plt.plot(t, wsol[:, 2 * i], label='x')
+
+        title = ''.join(str(t) for t in title)
+        plt.title(u'\n'.join(wrap(title, 54)), font2)
+        plt.plot(t, wsol[:, 2 * i], label='x', linestyle='--')
         plt.plot(t, wsol[:, 2 * i + 1], label='y')
-        plt.xlabel('t')
+        plt.xlabel(u't', fontproperties = font)
         plt.grid(True)
-        plt.legend(prop={'size': 30 / n})
+        plt.legend(prop={'size': 10})
 
         plt.subplot(n, 3, 3 * i + 2)
-        plt.title("Phase space")
+        plt.title(u"Przestrzeń fazowa", fontproperties = font)
         plt.xlabel("x")
         plt.ylabel("y")
         plt.plot(wsol[:, 2 * i], wsol[:, 2 * i + 1])
 
         plt.subplot(n, 3, 3 * i + 3)
 
-        plt.title("Phase")
-        plt.xlabel("t")
-        plt.ylabel("Phase")
+        plt.title(u"Protofaza", fontproperties = font)
+        plt.xlabel(u"t", fontproperties = font)
+        plt.ylabel(r"$\theta$")
 
-        plt.plot(t, phases[i], label='phase')
+        plt.plot(t, phases[i], label='protofaza')
         # plt.plot(t, instantaneous_phase, label='inst phase')
-        plt.legend(prop={'size': 30 / n})
+        #plt.legend(prop={'size': 30 / n})
 
     fig.tight_layout()
-    plt.savefig(_curr_dir+"/wykres")
+    #_curr_dir+
+    plt.savefig("IO/wykres")
     plt.show()
 '''
     conn_no_dupl = connections.copy()
@@ -64,15 +77,15 @@ def plot_synchrograms(t, phases, couplings_gl):
         if len(coupl[1]) > 0:
             subplots += 1
 
-    plot_params = {'figure.figsize': (10, 3*subplots)}
+    plot_params = {'figure.figsize': (10, 3*subplots),
+                   'figure.titlesize': 'large'}
     plt.rcParams.update(plot_params)
     active_subplot = 0
     for i, coupl in enumerate(couplings_gl):
         osc_i_couplings = coupl[1]
         if len(osc_i_couplings) > 0:
-            plot_params = {'figure.figsize': (12, 10),
+            plot_params = {'figure.figsize': (8, 6),
                            'axes.labelsize': 'large',
-                           'axes.titlesize': 'large',
                            'xtick.labelsize': 'large',
                            'ytick.labelsize': 'large'}
             plt.rcParams.update(plot_params)
@@ -93,14 +106,15 @@ def plot_synchrograms(t, phases, couplings_gl):
             plt.scatter(t[peak_indexes], driven, color="red")
             #plt.plot(t, phases[i])
 
-            plt.title(' '.join(["k=", str(strength), " delta=0.2"]))
+            plt.title(''.join([u'Wpływ oscylatora ', str(int(from_osc)), ' na oscylator ', str(i), u' z siłą: ', str(strength)]),
+                      fontsize=15, fontproperties = font)#, " delta=0.2"]))
             plt.ylim([0,6.5])
             plt.xlabel("t")
-            plt.ylabel("$\phi$")
-            plt.legend(prop={'size': 50 / len(couplings_gl)})
+            plt.ylabel("$\phi$", fontsize=20)
+            #plt.legend(prop={'size': 50 / len(couplings_gl)})
 
     plt.tight_layout(h_pad=1)
-    plt.savefig("synchro")
+    plt.savefig("IO/synchro")
     plt.show()
 
 

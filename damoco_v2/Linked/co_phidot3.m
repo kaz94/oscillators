@@ -9,7 +9,8 @@ function [phi1_dot,phi2_dot,phi3_dot,phi1,phi2,phi3] = co_phidot3(phi1,phi2,phi3
 norder=4;   % order of the fitting polynomial
 sl=4 ;      % window semi-length
 wl=2*sl+1;  % window length
-[b,g] = sgolay(norder,wl);   % Calculate S-G coefficients
+%[b,g] = sgolay(norder,wl);   % Calculate S-G coefficients
+g = load("golay_coeff.m");
 phi1=unwrap(phi1); phi2=unwrap(phi2); phi3=unwrap(phi3);
 phi1=phi1(:); phi1_dot=phi1;  phi2_dot=phi1; phi3_dot=phi1; 
 for n=sl+1:length(phi1)-sl

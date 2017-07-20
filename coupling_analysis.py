@@ -1,5 +1,135 @@
 import numpy as np
 from itertools import product
+from scipy.signal import hilbert
+from scipy.signal import argrelmax
+from matplotlib import pyplot as plt
+
+
+def get_pphases(t, wsol, cut):
+
+    wsol1=wsol[:, 0::2]
+    analytic_signal = hilbert(np.transpose(wsol1))
+
+    # cut unstable points due to Hilbert transform
+    start = cut
+    end = len(t) - cut
+    analytic_signal = analytic_signal[:, start:end]
+    wsol = wsol[start:end, :]
+    t = t[start:end]
+
+    analytic_signal = analytic_signal - np.transpose([np.mean(analytic_signal, axis=1)])
+    phases = np.angle(analytic_signal)
+    phases = np.mod(phases, 2*np.pi)
+
+    return t, wsol, phases
+
+
+def poincare_protophases(t, wsol, phases, p):
+    x=wsol[:,0]
+    y=wsol[:,1]
+    t=np.array(t)
+    poincare_x_idx = [i for i, j in enumerate(x) if j > (x.max() - x.min()) *1.2/3.]
+    poincare_y_idx = argrelmax(-np.abs(y), order=5)[0]
+    poincare_points_idx = [i for i in poincare_x_idx if i in poincare_y_idx]
+    '''plt.plot(t, y)
+    plt.xlabel("t")
+    plt.ylabel("y")
+    plt.scatter(t[poincare_y_idx], y[poincare_y_idx])
+    plt.show()
+
+    plt.plot(x, y, label="trajektoria")
+    plt.scatter(x[poincare_points_idx], y[poincare_points_idx], label="punkty Poincare", color="r")
+    plt.xlabel("x", size="large")
+    plt.ylabel("y", size="large")
+    plt.legend()
+    plt.title("Przekrój Poincare", size="large")
+    plt.savefig("poincare.png")
+    plt.show()'''
+
+    L = 0.
+    L_i = 0.
+    poincare_protoph = []
+    for i, point in enumerate(poincare_points_idx[:-1]):
+        start = poincare_points_idx[i]
+        stop = poincare_points_idx[i+1]+1
+        trajectory_parts = np.sqrt(np.diff(x[start:stop])**2 + np.diff(y[start:stop])**2)
+        delta_L_i = np.sum(trajectory_parts)
+
+        L += np.cumsum(trajectory_parts)
+        poincare_protoph += list(2.*np.pi*(L - L_i)/delta_L_i + 2.*np.pi*i)
+
+        L_i += delta_L_i
+        L = L[-1]
+
+    poincare_protoph_wra = np.array(poincare_protoph)%(2.*np.pi) - np.pi
+    true_ph_poincare, noth = true_phases(np.array(poincare_protoph))
+    true_ph_hilbert, noth = true_phases(get_pphases(wsol, 1)[0])
+
+    omega_0 = []
+    for ph in phases:
+        omega_0.append(natural_freq(t, ph))
+
+    idx_poincare = range(poincare_points_idx[0], poincare_points_idx[-1])
+    t_poincare = t[idx_poincare]
+    plt.plot(t, np.unwrap(phases[0])-omega_0[0]*(t-t[0]), label="protofaza - Hilbert")
+    plt.plot(t_poincare, poincare_protoph-omega_0[0]*(t_poincare-t_poincare[0]), label="protofaza - Poincare")
+    plt.plot(t, np.unwrap(true_ph_hilbert)[0]-omega_0[0]*(t-t[0]), label="faza - Hilbert")
+    plt.plot(t_poincare, np.unwrap(true_ph_poincare[0])-omega_0[0]*(t_poincare-t_poincare[0]), label="faza Poincare")
+
+    '''plt.plot(t, phases[0], linestyle="--", label="hilbert")
+    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], poincare_protoph_wra, linestyle="-.", color="r", label="poincare")
+    plt.plot(t[poincare_points_idx[0]: poincare_points_idx[-1]], true_ph_poincare[0], color="g", label="poincare->true")
+    plt.plot(t, true_ph_hilbert[0], color="black", label="hilbert->true")'''
+    plt.legend()
+    plt.xlabel("t")
+    plt.ylabel("proto(phase)")
+    plt.show()
+
+
+
+    return poincare_protoph_wra
+
+
+def natural_freq(time, proto_phases):
+    r, c = proto_phases.shape
+    ax = 1
+    if r > c:
+        ax = 0
+    proto_phases = np.unwrap(proto_phases, axis=ax)
+    freq = (proto_phases[-1] - proto_phases[0])/(time[-1] - time[0])
+    return freq # omega_0
+
+
+def out_remv(t, x, ph, dph, nstd=5):
+    n, N = ph.shape
+    m, N2 = dph.shape
+    if n != m:
+        raise Exception("arrays have different size of items")
+    if N != N2:
+        raise Exception("Not consistent number of oscillators")
+
+    out = np.array([], dtype=np.int)
+    for i in range(N):
+        # finding the indices of the outlying samples
+        out = np.append(out, np.where(np.isnan(ph[:, i]))[0])
+        out = np.append(out, np.where(np.isnan(dph[:, i]))[0])
+        outInds = np.where(np.logical_or(
+            dph[:, i] < np.mean(dph[:, i]) - nstd * np.std(dph[:, i]),
+            dph[:, i] > np.mean(dph[:, i]) + nstd * np.std(dph[:, i])))
+
+        out = np.append(out, outInds)
+
+    if len(out) != 0:
+        print("removed !")
+        out = np.array(list(set(out)))
+        print(out)
+
+    ph = np.delete(ph, out, axis=0)
+    dph = np.delete(dph, out, axis=0)
+    t = np.delete(t, out)
+    x = np.delete(x, out, axis=0)
+
+    return t, x, np.transpose(ph), np.transpose(dph), out
 
 
 def true_phases(theta):
@@ -41,7 +171,7 @@ def phi_dot(phi, fs):
     norder = 5  # order of the fitting polynomial
     sl = 12  # window semi-length
     wl = 2 * sl + 1  # window length
-    g = np.loadtxt("golay_coeff.txt")
+    g = np.loadtxt("IO/golay_coeff.txt")
     phi = np.unwrap(phi, axis=1)
 
     dphi = []
@@ -139,6 +269,7 @@ def fourier_coeff(phi, dphi, order=10):
 
 
 def co_3to2(qcoef_, N, thresh):
+
     thresh = np.max(np.abs(qcoef_)) * thresh / 100.
     ind = np.abs(qcoef_) < thresh
     qcoef_[ind] = 0
@@ -188,8 +319,8 @@ def q_norms(qcoeff):
     omega = np.zeros(len(qcoeff))
 
     for n in range(len(qcoeff)):
-        omega[n] = np.abs(qcoeff[n][N, N, N])
-        qcoeff[n][N,N,N] = 0.
+        omega[n] = np.abs(qcoeff[n][(N,)*len(qcoeff)])
+        qcoeff[n][(N,)*len(qcoeff)] = 0.
 
     COUP[0, 1], COUP[0, 2], COUP[0, 0], _, _, NORM[0] = co_3to2(qcoeff[0], N, thresh)
     COUP[1, 2], COUP[1, 0], COUP[1, 1], _, _, NORM[1] = co_3to2(qcoeff[1], N, thresh)
@@ -199,7 +330,7 @@ def q_norms(qcoeff):
 
 
 if __name__ == '__main__':
-    data = np.loadtxt('signal.txt')
+    data = np.loadtxt('IO/signal.txt')
     t = data[:, 0]
     wsol = data[:, 1:]
     fs = 1 / (t[1] - t[0])
@@ -208,28 +339,58 @@ if __name__ == '__main__':
     Y = wsol[:, 1::2]
     N = X.shape[1]
 
-    theta = -np.arctan2(Y, X)
+    # normal
+    # theta = -np.arctan2(Y, X)
+
+    # noisy
+    theta = -np.arctan2(Y - 0.2 + np.random.uniform(-0.05, 0.05), X - 0.2 + np.random.uniform(-0.05, 0.05))
 
     ph = true_phases(theta.T)
 
     dphi, phi = phi_dot(ph, fs)
 
-    cf, qcf = fourier_coeff(phi.T, dphi.T, order=5)
-
-
-    #q_norms(qcf)
-
-    '''Q = np.loadtxt("/home/kasia/PycharmProjects/oscillators/Qtest.dat")
-    Q = Q.reshape((20, 20, 20))
-    Q = Q.transpose((0, 2, 1))
-    #print(Q)
-    #print(co_3to2(Q, 2, 1.1))
-
-    qc = np.array([Q, Q, Q])'''
+    cf, qcf = fourier_coeff(phi.T, dphi.T, order=3)
 
     q, n, o = q_norms(qcf)
     print('Coupling:\n', q, '\nnorm:', n, '\nomega:', o)
 
+    # wrapped
+    theta_mod = theta # np.mod(theta, 2*np.pi)
+    phi_mod = phi
+
+    # unwrapped
+    theta = np.unwrap(theta)
+    phi = np.unwrap(phi)
+
+    end = 200
+    N=1
+    for osc in range(N):
+        plt.plot(t[:end], theta[:end, osc], color="r", label="unwr")
+        plt.plot(t[:end], theta_mod[:end, osc], color="g", label="wrapped")
+    plt.title("theta")
+    plt.legend()
+    plt.show()
+
+
+    sl = 12
+    for osc in range(N):
+        plt.plot(t[:end], theta[:end, osc], color="r", label="th_unwr")
+        plt.plot(t[sl:len(t)-sl][:end], phi[osc, :end], color="g", label="phi_unwr")
+    plt.legend()
+    plt.show()
+
+    for osc in range(N):
+        plt.plot(t[:end], theta[:end, osc] - o[osc]*t[:end], color="r", label="th_unwr - omega*t")
+        plt.plot(t[sl:len(t)-sl][:end], phi[osc, :end] - o[osc]*t[sl:len(t)-sl][:end], color="g", label="phi_unwr - omega*t")
+    plt.legend()
+    plt.show()
+
+    omega = theta[-1, :] - theta[0, :]
+    for osc in range(N):
+        plt.plot(t[:end], theta[:end, osc] - omega[osc]*t[:end], color="r", label="th_unwr - omega2*t")
+        plt.plot(t[sl:len(t)-sl][:end], phi[osc, :end] - omega[osc]*t[sl:len(t)-sl][:end], color="g", label="phi_unwr - omega2*t")
+    plt.legend()
+    plt.show()
 
 
 

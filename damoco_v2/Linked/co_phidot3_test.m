@@ -18,11 +18,13 @@ phi1=unwrap(phi1); phi2=unwrap(phi2); phi3=unwrap(phi3);
 phi1_dot=conv(phi1, g(:,2), 'same');
 phi2_dot=conv(phi2, g(:,2), 'same');
 phi3_dot=conv(phi3, g(:,2), 'same');
+
 phi1_dot=phi1_dot(sl+1:end-sl)*fsample;
 phi2_dot=phi2_dot(sl+1:end-sl)*fsample;
 phi3_dot=phi3_dot(sl+1:end-sl)*fsample;
 phi1=phi1(sl+1:end-sl); % Truncating both phases in order to 
 phi2=phi2(sl+1:end-sl); % synchronize them with the derivative
 phi3=phi3(sl+1:end-sl); % synchronize them with the derivative
+
 end
 

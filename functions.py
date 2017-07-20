@@ -1,5 +1,4 @@
 from matplotlib import pyplot as plt
-from scipy.signal import hilbert
 import numpy as np
 from scipy.signal import argrelmax
 from ReadAdjacencyMatrix import read_file
@@ -10,11 +9,11 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 
 
-def load_params():
+def load_params(file):
     w = []
     params = []
     couplings_gl = []
-    adj_list = read_file()
+    adj_list = read_file(file)
     for i, osc in enumerate(adj_list):
         # Oscillator(x, y, alfa, mi, d, e, f)
         w.append(osc[0])  # x0
@@ -50,7 +49,9 @@ def vector_field(w, t, p):
         eq = -1 * params['alfa'] * (x[o] ** 2 - params['mi']) * \
              y[o] - params['f'] * x[o] * (x[o] + params['d']) * (x[o] + params['e'])
         for c in couplings:
-            eq += c[1] * (x[int(c[0])] + y[int(c[0])])
+            drive_osc = int(c[0])
+            k = c[1]
+            eq += k * (x[drive_osc] + y[drive_osc])
         equasions.append(eq)
     return equasions
 
