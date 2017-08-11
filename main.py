@@ -6,7 +6,7 @@ from coupling_analysis import get_pphases
 # ODE solver parameters
 abserr = 1.0e-8
 relerr = 1.0e-6
-stoptime = 5000
+stoptime = 250
 point_dens = 40 # points per time unit
 numpoints = int(point_dens * stoptime)
 filename = 'macierz.txt'
@@ -21,13 +21,12 @@ def synchrograms_from_file():
 
 def dynamics(n, w0, p, couplings_gl, N=1, M=1, plot=True, save=False):
     t = np.array([stoptime * float(i) / (numpoints - 1) for i in range(numpoints)])
-    #print(t[1] - t[0])
-    print("************")
+
     # Call the ODE solver.
     wsol, dict = odeint(vector_field, w0, t, args=(p,),
                   atol=abserr, rtol=relerr, full_output=True)
-    ttt=np.round(dict['hu'], 3)
-    #print(np.round(list(set(ttt)), 3))
+    # ttt=np.round(dict['hu'], 3)
+    # print(np.round(list(set(ttt)), 3))
 
     # cut unstable points
     t = t[point_dens * 221:]
@@ -44,7 +43,7 @@ def dynamics(n, w0, p, couplings_gl, N=1, M=1, plot=True, save=False):
 
     if save:
         t = np.transpose([t])
-        np.savetxt('IO/signal.txt', np.hstack((t,wsol)), fmt='%.18g', delimiter=' ', newline='\n')
+        np.savetxt('IO/signal_tmp.txt', np.hstack((t,wsol)), fmt='%.18g', delimiter=' ', newline='\n')
 
 
 

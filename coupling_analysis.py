@@ -133,9 +133,12 @@ def out_remv(t, x, ph, dph, nstd=5):
 
 
 def true_phases(theta):
-    N, n_points = theta.shape
+    if len(theta.shape) == 1:
+        N = 1
+        n_points = len(theta)
+    else:
+        N, n_points = theta.shape
     if N > 3:
-        print("N: ", N)
         raise Exception("Number of osc > 3, maybe transpose theta array?")
     phi = []
 
@@ -185,13 +188,29 @@ def phi_dot(phi, fs):
     return dphi, phi
 
 
+def max_tri_sync(theta, order=5):
+    m_sync_in = np.zeros((order, order, order))
+    maxind = 0
+    for n in range(0,order+1):
+        for m in range(-order, order+1):
+            for l in range(-order, order+1):
+                index = np.abs(np.mean(np.exp(1j * (n*theta[0] + m*theta[1] + l*theta[2]) )))
+                if (index > maxind) and (n != 0 or m != 0 or l != 0):
+                    maxind = index
+                    n_th1 = n
+                    m_th2 = m
+                    l_th3 = l
+                # m_sync_in[n, m+order, l+order] = index
+
+    return m_sync_in, maxind, n_th1, m_th2, l_th3
+
+
 def fourier_coeff(phi, dphi, order=10):
 
     nn, N = phi.shape
     if N != dphi.shape[1]:
         raise Exception("Not consistent number of oscillators")
     if N > 3:
-        print(phi.shape)
         raise Exception("Number of oscillators is greater than 3")
 
     order1 = order + 1
@@ -309,9 +328,7 @@ def q_norms(qcoeff):
     ## method = 1
     thresh = 2
     N = qcoeff[0].shape
-    print(N)
     N = int((N[0] - 1) / 2)
-    print(N)
 
     COUP = np.zeros((3, 3))
     NORM = np.zeros(3)
@@ -340,22 +357,40 @@ if __name__ == '__main__':
     N = X.shape[1]
 
     # normal
-    # theta = -np.arctan2(Y, X)
+    theta = -np.arctan2(Y, X)
 
     # noisy
-    theta = -np.arctan2(Y - 0.2 + np.random.uniform(-0.05, 0.05), X - 0.2 + np.random.uniform(-0.05, 0.05))
+    # theta = -np.arctan2(Y - 0.2 + np.random.uniform(-0.05, 0.05), X - 0.2 + np.random.uniform(-0.05, 0.05))
+    # np.savetxt('IO/theta.txt', theta)
+
+    omega = natural_freq(t, theta)
+    print(omega)
 
     ph = true_phases(theta.T)
+
+
+    '''# check maximal synchronization:
+    m_sync_in, maxind, n_th1, m_th2, l_th3 = max_tri_sync(ph, order=5)
+    print("maxind: ", maxind, "\t\t", n_th1, m_th2, l_th3)
 
     dphi, phi = phi_dot(ph, fs)
 
     cf, qcf = fourier_coeff(phi.T, dphi.T, order=3)
 
     q, n, o = q_norms(qcf)
-    print('Coupling:\n', q, '\nnorm:', n, '\nomega:', o)
+    print('Coupling:\n', q, '\nnorm:', n, '\nomega:', o)'''
+
+    # theta and phi comparison, single oscillator
+    '''plt.plot(t, np.unwrap(theta[:, 0]) - omega*(t-t[0]), linestyle='--', label=r"$\theta$")
+    plt.plot(t, np.unwrap(ph[0]) - omega*(t-t[0]), label=r"$\phi$")
+    plt.xlabel("czas", fontsize=20)
+    plt.ylabel(r"$\phi, \theta - \omega_0 t$", fontsize=20)
+    plt.legend(fontsize=20)
+    plt.savefig("IO/phi_theta.png")
+    plt.show()'''
 
     # wrapped
-    theta_mod = theta # np.mod(theta, 2*np.pi)
+    '''theta_mod = theta # np.mod(theta, 2*np.pi)
     phi_mod = phi
 
     # unwrapped
@@ -390,7 +425,7 @@ if __name__ == '__main__':
         plt.plot(t[:end], theta[:end, osc] - omega[osc]*t[:end], color="r", label="th_unwr - omega2*t")
         plt.plot(t[sl:len(t)-sl][:end], phi[osc, :end] - omega[osc]*t[sl:len(t)-sl][:end], color="g", label="phi_unwr - omega2*t")
     plt.legend()
-    plt.show()
+    plt.show()'''
 
 
 

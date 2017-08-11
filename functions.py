@@ -51,7 +51,7 @@ def vector_field(w, t, p):
         for c in couplings:
             drive_osc = int(c[0])
             k = c[1]
-            eq += k * (x[drive_osc] + y[drive_osc])
+            eq += k * (x[drive_osc] + y[drive_osc])# + 0.001*np.random.normal()
         equasions.append(eq)
     return equasions
 
